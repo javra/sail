@@ -14,7 +14,7 @@ let is_enum env id = match Env.lookup_id id env with Enum _ -> true | _ -> false
 let pat_is_plain_binder env (P_aux (p, _)) =
   match p with
   | (P_id id | P_typ (_, P_aux (P_id id, _))) when not (is_enum env id) -> Some (Some id)
-  | (P_wild | P_typ (_, P_aux (P_wild, _))) -> Some None
+  | P_wild | P_typ (_, P_aux (P_wild, _)) -> Some None
   | P_var (_, _) -> Some (Some (Id_aux (Id "var", Unknown)))
   | P_app (_, _) -> Some (Some (Id_aux (Id "app", Unknown)))
   | P_vector _ -> Some (Some (Id_aux (Id "vect", Unknown)))
@@ -61,6 +61,12 @@ let rec untuple_args_pat typs (P_aux (paux, ((l, _) as annot)) as pat) =
 let doc_typ (Typ_aux (t, _) as typ) =
   match t with Typ_id (Id_aux (Id "unit", _)) -> string "Unit" | _ -> failwith "Type not translatable yet."
 
+let doc_exp (E_aux (e, (l, annot)) as full_exp) =
+  match e with
+  | E_id id -> string (string_of_id id)
+  | E_lit (L_aux (L_unit, _)) -> string "()"
+  | _ -> failwith "Expression not translatable yet"
+
 let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
   let env = env_of_tannot (snd annot) in
   let TypQ_aux (tq, l), typ = Env.get_val_spec_orig id env in
@@ -85,11 +91,15 @@ let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
            )
       in
       let binders : document list =
-        binders |> List.map (fun (i, t) -> separate space [string (string_of_id i); string ":"; doc_typ t] |> parens)
+        binders |> List.map (fun (i, t) -> separate space [string (string_of_id i); colon; doc_typ t] |> parens)
       in
-      separate space ([string "def"; string (string_of_id id)] @ binders @ [string ":"; doc_typ ret_typ; string ":="])
+      separate space ([string "def"; string (string_of_id id)] @ binders @ [colon; doc_typ ret_typ; coloneq])
 
-let doc_funcl funcl = separate hardline [doc_funcl_init funcl; string "  _"] ^^ hardline
+let doc_funcl_body (FCL_aux (FCL_funcl (id, pexp), annot)) =
+  let _, _, exp, _ = destruct_pexp pexp in
+  doc_exp exp
+
+let doc_funcl funcl = nest 2 (doc_funcl_init funcl ^/^ doc_funcl_body funcl) ^^ hardline
 
 let doc_fundef (FD_aux (FD_function (r, typa, fcls), fannot)) =
   match fcls with
