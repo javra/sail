@@ -59,12 +59,33 @@ let rec untuple_args_pat typs (P_aux (paux, ((l, _) as annot)) as pat) =
   | _, _ -> unreachable l __POS__ "Unexpected pattern/type combination"
 
 let doc_typ (Typ_aux (t, _) as typ) =
-  match t with Typ_id (Id_aux (Id "unit", _)) -> string "Unit" | _ -> failwith "Type not translatable yet."
+  match t with
+  | Typ_id (Id_aux (Id "unit", _)) -> string "Unit"
+  | Typ_id (Id_aux (Id "int", _)) -> string "Int"
+  | _ -> failwith "Type not translatable yet."
+
+let lean_escape_string s = Str.global_replace (Str.regexp "\"") "\"\"" s
+
+let doc_lit (L_aux (lit, l)) =
+  match lit with
+  | L_unit -> string "()"
+  | L_zero -> string "0"
+  | L_one -> string "1"
+  | L_false -> string "false"
+  | L_true -> string "true"
+  | L_num i ->
+      let s = Big_int.to_string i in
+      string s
+  | L_hex n -> utf8string ("Ox" ^ n)
+  | L_bin n -> utf8string ("Ob" ^ n)
+  | L_undef -> utf8string "(Fail \"undefined value of unsupported type\")"
+  | L_string s -> utf8string ("\"" ^ lean_escape_string s ^ "\"")
+  | L_real s -> utf8string s (* TODO test if this is really working *)
 
 let doc_exp (E_aux (e, (l, annot)) as full_exp) =
   match e with
   | E_id id -> string (string_of_id id)
-  | E_lit (L_aux (L_unit, _)) -> string "()"
+  | E_lit l -> doc_lit l
   | _ -> failwith "Expression not translatable yet"
 
 let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
