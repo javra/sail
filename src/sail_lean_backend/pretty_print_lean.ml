@@ -33,6 +33,12 @@ let args_of_typ l env typs =
   List.split (List.mapi arg typs)
 
 (* Copied from the Coq PP *)
+(* Sail currently has a single pattern to match against a list of
+   argument types.  We need to tweak everything to match up,
+   especially so that the function is presented in curried form.  In
+   particular, if there's a single binder for multiple arguments
+   (which rewriting can currently introduce) then we need to turn it
+   into multiple binders and reconstruct it in the function body. *)
 let rec untuple_args_pat typs (P_aux (paux, ((l, _) as annot)) as pat) =
   let env = env_of_annot annot in
   let identity body = body in
