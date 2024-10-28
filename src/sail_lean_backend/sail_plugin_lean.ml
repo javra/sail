@@ -113,7 +113,7 @@ let lean_rewrites =
     ("recheck_defs", []);
     (* Put prover regstate generation after removing bitfield records,
        which has to be followed by type checking *)
-    (* ("prover_regstate", [Bool_arg false]); *)
+    ("prover_regstate", [Bool_arg true]);
     (* ("remove_assert", rewrite_ast_remove_assert); *)
     ("move_termination_measures", []);
     ("top_sort_defs", []);
@@ -173,10 +173,10 @@ let create_lake_project (out_name : string) =
 
 let output (out_name : string) ast =
   let project_main = create_lake_project out_name in
-  Pretty_print_sail.output_ast stdout (Type_check.strip_ast ast);
+  (* Uncomment for debug output of the Sail code after the rewrite passes *)
+  (* Pretty_print_sail.output_ast stdout (Type_check.strip_ast ast); *)
   Pretty_print_lean.pp_ast_lean ast project_main;
-  close_out project_main;
-  failwith "Empty Lean project created, the actual export is not yet implemented."
+  close_out project_main
 
 let lean_target out_name { ctx; ast; effect_info; env; _ } =
   let out_name = match out_name with Some f -> f | None -> "out" in
