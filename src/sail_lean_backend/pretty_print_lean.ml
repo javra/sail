@@ -126,7 +126,7 @@ let doc_funcl_body (FCL_aux (FCL_funcl (id, pexp), annot)) =
   let _, _, exp, _ = destruct_pexp pexp in
   doc_exp exp
 
-let doc_funcl funcl = nest 2 (doc_funcl_init funcl ^/^ doc_funcl_body funcl) ^^ hardline
+let doc_funcl funcl = nest 2 (doc_funcl_init funcl ^^ hardline ^^ doc_funcl_body funcl)
 
 let doc_fundef (FD_aux (FD_function (r, typa, fcls), fannot)) =
   match fcls with
