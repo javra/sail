@@ -90,7 +90,7 @@ let doc_lit (L_aux (lit, l)) =
 
 let doc_exp (E_aux (e, (l, annot)) as full_exp) =
   match e with
-  | E_id id -> string (string_of_id id)
+  | E_id id -> string (string_of_id id) (* TODO replace by a translating via a binding map *)
   | E_lit l -> doc_lit l
   | _ -> failwith "Expression not translatable yet"
 

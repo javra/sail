@@ -113,7 +113,7 @@ let lean_rewrites =
     ("recheck_defs", []);
     (* Put prover regstate generation after removing bitfield records,
        which has to be followed by type checking *)
-    ("prover_regstate", [Bool_arg true]);
+    (* ("prover_regstate", [Bool_arg false]); *)
     (* ("remove_assert", rewrite_ast_remove_assert); *)
     ("move_termination_measures", []);
     ("top_sort_defs", []);
