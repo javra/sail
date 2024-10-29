@@ -98,7 +98,7 @@ let rec doc_exp (E_aux (e, (l, annot)) as full_exp) =
         if Env.is_extern f env "lean" then string (Env.get_extern f env "lean") else doc_exp (E_aux (E_id f, (l, annot)))
       in
       let d_args = List.map doc_exp args in
-      nest 2 (flow (break 1) (d_id :: d_args))
+      nest 2 (parens (flow (break 1) (d_id :: d_args)))
   | _ -> failwith "Expression not translatable yet"
 
 let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
