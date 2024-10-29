@@ -95,7 +95,7 @@ let rec doc_exp (E_aux (e, (l, annot)) as full_exp) =
   | E_lit l -> doc_lit l
   | E_app (f, args) ->
       let d_id =
-        if Env.is_extern f env "coq" then string (Env.get_extern f env "lean") else doc_exp (E_aux (E_id f, (l, annot)))
+        if Env.is_extern f env "lean" then string (Env.get_extern f env "lean") else doc_exp (E_aux (E_id f, (l, annot)))
       in
       let d_args = List.map doc_exp args in
       nest 2 (flow (break 1) (d_id :: d_args))
