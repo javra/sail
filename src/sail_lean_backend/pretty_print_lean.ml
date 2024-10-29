@@ -88,10 +88,17 @@ let doc_lit (L_aux (lit, l)) =
   | L_string s -> utf8string ("\"" ^ lean_escape_string s ^ "\"")
   | L_real s -> utf8string s (* TODO test if this is really working *)
 
-let doc_exp (E_aux (e, (l, annot)) as full_exp) =
+let rec doc_exp (E_aux (e, (l, annot)) as full_exp) =
+  let env = env_of_tannot annot in
   match e with
   | E_id id -> string (string_of_id id) (* TODO replace by a translating via a binding map *)
   | E_lit l -> doc_lit l
+  | E_app (f, args) ->
+      let d_id =
+        if Env.is_extern f env "coq" then string (Env.get_extern f env "lean") else doc_exp (E_aux (E_id f, (l, annot)))
+      in
+      let d_args = List.map doc_exp args in
+      nest 2 (flow (break 1) (d_id :: d_args))
   | _ -> failwith "Expression not translatable yet"
 
 let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
@@ -103,7 +110,6 @@ let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
     | _ -> failwith ("Function " ^ string_of_id id ^ " does not have function type")
   in
   match tq with
-  | TypQ_tq _ -> failwith "Type quantifiers not translatable yet"
   | TypQ_no_forall ->
       ();
       let pat, _, _, _ = destruct_pexp pexp in
@@ -121,6 +127,7 @@ let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
         binders |> List.map (fun (i, t) -> separate space [string (string_of_id i); colon; doc_typ t] |> parens)
       in
       separate space ([string "def"; string (string_of_id id)] @ binders @ [colon; doc_typ ret_typ; coloneq])
+  | TypQ_tq _ -> failwith "Type quantifiers not translatable yet"
 
 let doc_funcl_body (FCL_aux (FCL_funcl (id, pexp), annot)) =
   let _, _, exp, _ = destruct_pexp pexp in
