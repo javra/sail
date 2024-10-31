@@ -72,7 +72,7 @@ let rec doc_typ (Typ_aux (t, _) as typ) =
   | Typ_id (Id_aux (Id "unit", _)) -> string "Unit"
   | Typ_id (Id_aux (Id "int", _)) -> string "Int"
   | Typ_app (Id_aux (Id "bitvector", _), [A_aux (A_nexp m, _)]) -> string "BitVec " ^^ doc_nexp m
-  | Typ_tuple ts -> parens (separate (space ^^ string "×" ^^ space) (List.map doc_typ ts))
+  | Typ_tuple ts -> parens (separate_map (space ^^ string "×" ^^ space) doc_typ ts)
   | _ -> failwith "Type not translatable yet."
 
 let lean_escape_string s = Str.global_replace (Str.regexp "\"") "\"\"" s
@@ -106,7 +106,7 @@ let rec doc_exp (E_aux (e, (l, annot)) as full_exp) =
       nest 2 (parens (flow (break 1) (d_id :: d_args)))
   | E_vector vals -> failwith "vector found"
   | E_typ (typ, e) -> parens (separate space [doc_exp e; colon; doc_typ typ])
-  | E_tuple es -> parens (separate (comma ^^ space) (List.map doc_exp es))
+  | E_tuple es -> parens (separate_map (comma ^^ space) doc_exp es)
   | _ -> failwith "Expression not translatable yet"
 
 let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
@@ -162,6 +162,6 @@ let rec remove_imports (defs : (Libsail.Type_check.tannot, Libsail.Type_check.en
 
 let pp_ast_lean ({ defs; _ } as ast : Libsail.Type_check.typed_ast) o =
   let defs = remove_imports defs 0 in
-  let output : document = separate empty (List.map doc_def defs) in
+  let output : document = separate_map empty doc_def defs in
   print o output;
   ()
