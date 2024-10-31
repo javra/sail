@@ -67,11 +67,12 @@ let rec untuple_args_pat typs (P_aux (paux, ((l, _) as annot)) as pat) =
 let doc_nexp (Nexp_aux (n, l) as nexp) =
   match n with Nexp_constant i -> string (Big_int.to_string i) | _ -> failwith "NExp not translatable yet."
 
-let doc_typ (Typ_aux (t, _) as typ) =
+let rec doc_typ (Typ_aux (t, _) as typ) =
   match t with
   | Typ_id (Id_aux (Id "unit", _)) -> string "Unit"
   | Typ_id (Id_aux (Id "int", _)) -> string "Int"
   | Typ_app (Id_aux (Id "bitvector", _), [A_aux (A_nexp m, _)]) -> string "BitVec " ^^ doc_nexp m
+  | Typ_tuple ts -> parens (separate (space ^^ string "×" ^^ space) (List.map doc_typ ts))
   | _ -> failwith "Type not translatable yet."
 
 let lean_escape_string s = Str.global_replace (Str.regexp "\"") "\"\"" s
@@ -105,6 +106,7 @@ let rec doc_exp (E_aux (e, (l, annot)) as full_exp) =
       nest 2 (parens (flow (break 1) (d_id :: d_args)))
   | E_vector vals -> failwith "vector found"
   | E_typ (typ, e) -> parens (separate space [doc_exp e; colon; doc_typ typ])
+  | E_tuple es -> parens (separate (comma ^^ space) (List.map doc_exp es))
   | _ -> failwith "Expression not translatable yet"
 
 let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
