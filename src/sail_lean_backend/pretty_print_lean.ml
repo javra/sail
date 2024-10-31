@@ -64,10 +64,14 @@ let rec untuple_args_pat typs (P_aux (paux, ((l, _) as annot)) as pat) =
   | _, [typ] -> ([(pat, typ)], identity)
   | _, _ -> unreachable l __POS__ "Unexpected pattern/type combination"
 
+let doc_nexp (Nexp_aux (n, l) as nexp) =
+  match n with Nexp_constant i -> string (Big_int.to_string i) | _ -> failwith "NExp not translatable yet."
+
 let doc_typ (Typ_aux (t, _) as typ) =
   match t with
   | Typ_id (Id_aux (Id "unit", _)) -> string "Unit"
   | Typ_id (Id_aux (Id "int", _)) -> string "Int"
+  | Typ_app (Id_aux (Id "bitvector", _), [A_aux (A_nexp m, _)]) -> string "BitVec " ^^ doc_nexp m
   | _ -> failwith "Type not translatable yet."
 
 let lean_escape_string s = Str.global_replace (Str.regexp "\"") "\"\"" s
@@ -82,8 +86,8 @@ let doc_lit (L_aux (lit, l)) =
   | L_num i ->
       let s = Big_int.to_string i in
       string s
-  | L_hex n -> utf8string ("Ox" ^ n)
-  | L_bin n -> utf8string ("Ob" ^ n)
+  | L_hex n -> utf8string ("0x" ^ n)
+  | L_bin n -> utf8string ("0b" ^ n)
   | L_undef -> utf8string "(Fail \"undefined value of unsupported type\")"
   | L_string s -> utf8string ("\"" ^ lean_escape_string s ^ "\"")
   | L_real s -> utf8string s (* TODO test if this is really working *)
@@ -99,6 +103,8 @@ let rec doc_exp (E_aux (e, (l, annot)) as full_exp) =
       in
       let d_args = List.map doc_exp args in
       nest 2 (parens (flow (break 1) (d_id :: d_args)))
+  | E_vector vals -> failwith "vector found"
+  | E_typ (typ, e) -> parens (separate space [doc_exp e; colon; doc_typ typ])
   | _ -> failwith "Expression not translatable yet"
 
 let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
