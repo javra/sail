@@ -9,6 +9,9 @@ open Rewriter
 open PPrint
 open Pretty_print_common
 
+let doc_id_ctor (Id_aux (i, _)) =
+  match i with Id i -> string i | Operator x -> string (Util.zencode_string ("op " ^ x))
+
 let is_enum env id = match Env.lookup_id id env with Enum _ -> true | _ -> false
 
 let pat_is_plain_binder env (P_aux (p, _)) =
@@ -73,8 +76,7 @@ let rec doc_typ (Typ_aux (t, _) as typ) =
   | Typ_id (Id_aux (Id "int", _)) -> string "Int"
   | Typ_app (Id_aux (Id "bitvector", _), [A_aux (A_nexp m, _)]) -> string "BitVec " ^^ doc_nexp m
   | Typ_tuple ts -> parens (separate_map (space ^^ string "×" ^^ space) doc_typ ts)
-  | Typ_id (Id_aux (Id id, _)) ->
-    string id
+  | Typ_id (Id_aux (Id id, _)) -> string id
   | _ -> failwith "Type not translatable yet."
 
 let lean_escape_string s = Str.global_replace (Str.regexp "\"") "\"\"" s
@@ -100,8 +102,8 @@ let rec doc_exp (E_aux (e, (l, annot)) as full_exp) =
   match e with
   | E_id id -> string (string_of_id id) (* TODO replace by a translating via a binding map *)
   | E_lit l -> doc_lit l
-  | E_app ((Id_aux (Id "internal_pick", _)), _) ->
-    string "Classical.ofNonempty"
+  | E_app (Id_aux (Id "internal_pick", _), _) ->
+      string "sorry" (* TODO replace by actual implementation of internal_pick *)
   | E_app (f, args) ->
       let d_id =
         if Env.is_extern f env "lean" then string (Env.get_extern f env "lean") else doc_exp (E_aux (E_id f, (l, annot)))
@@ -153,8 +155,25 @@ let doc_fundef (FD_aux (FD_function (r, typa, fcls), fannot)) =
   | [funcl] -> doc_funcl funcl
   | _ -> failwith "FD_function with more than one clause"
 
+let doc_typdef (TD_aux (td, tannot) as full_typdef) =
+  match td with
+  | TD_enum (Id_aux (Id id, _), fields, _) ->
+      let derivers = if List.length fields > 0 then [string "Inhabited"] else [] in
+      let fields = List.map doc_id_ctor fields in
+      let fields = List.map (fun i -> space ^^ pipe ^^ space ^^ i) fields in
+      let enums_doc = concat fields in
+      nest 2
+        (flow (break 1) [string "inductive"; string id; string "where"]
+        ^^ enums_doc ^^ hardline ^^ string "deriving" ^^ space
+        ^^ separate (comma ^^ space) derivers
+        )
+  | _ -> failwith "Type definition not translatable yet"
+
 let doc_def (DEF_aux (aux, def_annot) as def) =
-  match aux with DEF_fundef fdef -> group (doc_fundef fdef) ^/^ hardline | _ -> empty
+  match aux with
+  | DEF_fundef fdef -> group (doc_fundef fdef) ^/^ hardline
+  | DEF_type tdef -> group (doc_typdef tdef) ^/^ hardline
+  | _ -> empty
 
 (* Remove all imports for now, they will be printed in other files. Probably just for testing. *)
 let rec remove_imports (defs : (Libsail.Type_check.tannot, Libsail.Type_check.env) def list) depth =
