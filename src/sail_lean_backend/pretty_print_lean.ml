@@ -73,6 +73,8 @@ let rec doc_typ (Typ_aux (t, _) as typ) =
   | Typ_id (Id_aux (Id "int", _)) -> string "Int"
   | Typ_app (Id_aux (Id "bitvector", _), [A_aux (A_nexp m, _)]) -> string "BitVec " ^^ doc_nexp m
   | Typ_tuple ts -> parens (separate_map (space ^^ string "×" ^^ space) doc_typ ts)
+  | Typ_id (Id_aux (Id id, _)) ->
+    string id
   | _ -> failwith "Type not translatable yet."
 
 let lean_escape_string s = Str.global_replace (Str.regexp "\"") "\"\"" s
@@ -98,6 +100,8 @@ let rec doc_exp (E_aux (e, (l, annot)) as full_exp) =
   match e with
   | E_id id -> string (string_of_id id) (* TODO replace by a translating via a binding map *)
   | E_lit l -> doc_lit l
+  | E_app ((Id_aux (Id "internal_pick", _)), _) ->
+    string "Classical.ofNonempty"
   | E_app (f, args) ->
       let d_id =
         if Env.is_extern f env "lean" then string (Env.get_extern f env "lean") else doc_exp (E_aux (E_id f, (l, annot)))
