@@ -19,6 +19,21 @@ def extern_negate : Int :=
 def extern_mult : Int :=
   (Int.mul 5 4)
 
+def extern_and : Bool :=
+  (Bool.and true false)
+
+def extern_and_no_flow : Bool :=
+  (Bool.and true false)
+
+def extern_or : Bool :=
+  (Bool.or true false)
+
+def extern_eq_bool : Bool :=
+  (Eq true false)
+
+def extern_eq_bit : Bool :=
+  (Eq 0#1 1#1)
+
 def initialize_registers : Unit :=
   ()
 

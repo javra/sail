@@ -30,3 +30,23 @@ function extern_mult() -> int = {
   return mult_int(5, 4)
 }
 
+function extern_and() -> bool = {
+  return and_bool(true, false)
+}
+
+function extern_and_no_flow() -> bool = {
+  return and_bool_no_flow(true, false)
+}
+
+function extern_or() -> bool = {
+  return or_bool(true, false)
+}
+
+function extern_eq_bool() -> bool = {
+  return eq_bool(true, false)
+}
+
+function extern_eq_bit() -> bool = {
+  return eq_bit(bitzero, bitone)
+}
+
