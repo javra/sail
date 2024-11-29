@@ -114,6 +114,14 @@ let rec doc_exp (E_aux (e, (l, annot)) as full_exp) =
   | E_vector vals -> failwith "vector found"
   | E_typ (typ, e) -> parens (separate space [doc_exp e; colon; doc_typ typ])
   | E_tuple es -> parens (separate_map (comma ^^ space) doc_exp es)
+  | E_let (LB_aux (LB_val (lpat, lexp), _), e) ->
+      let id =
+        match pat_is_plain_binder env lpat with
+        | Some (Some (Id_aux (Id id, _))) -> id
+        | Some None -> "x" (* TODO fresh name or wildcard instead of x *)
+        | _ -> failwith "Let pattern not translatable yet."
+      in
+      nest 2 (flow (break 1) [string "let"; string id; coloneq; doc_exp lexp]) ^^ hardline ^^ doc_exp e
   | _ -> failwith "Expression not translatable yet"
 
 let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
@@ -125,7 +133,7 @@ let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
     | _ -> failwith ("Function " ^ string_of_id id ^ " does not have function type")
   in
   match tq with
-  | TypQ_no_forall ->
+  | TypQ_tq [] | TypQ_no_forall ->
       ();
       let pat, _, _, _ = destruct_pexp pexp in
       let pats, _ = untuple_args_pat arg_typs pat in
@@ -142,7 +150,10 @@ let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
         binders |> List.map (fun (i, t) -> separate space [string (string_of_id i); colon; doc_typ t] |> parens)
       in
       separate space ([string "def"; string (string_of_id id)] @ binders @ [colon; doc_typ ret_typ; coloneq])
-  | TypQ_tq _ -> failwith "Type quantifiers not translatable yet"
+  | TypQ_tq qs ->
+      let qs = List.map string_of_quant_item qs in
+      let foo = String.concat ";" qs in
+      failwith ("Type quantifiers (" ^ foo ^ ") not translatable yet")
 
 let doc_funcl_body (FCL_aux (FCL_funcl (id, pexp), annot)) =
   let _, _, exp, _ = destruct_pexp pexp in
