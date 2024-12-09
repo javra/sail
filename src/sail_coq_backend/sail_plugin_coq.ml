@@ -119,6 +119,7 @@ let coq_options =
 let coq_rewrites =
   let open Rewrites in
   [
+    ("move_termination_measures", []);
     ("instantiate_outcomes", [String_arg "coq"]);
     ("realize_mappings", []);
     ("remove_vector_subrange_pats", []);
@@ -151,7 +152,6 @@ let coq_rewrites =
           like this again, this is where it would go.
        ("prover_regstate", [Bool_arg true]);*)
     (* ("remove_assert", rewrite_ast_remove_assert); *)
-    ("move_termination_measures", []);
     ("top_sort_defs", []);
     ("const_prop_mutrec", [String_arg "coq"]);
     ("exp_lift_assign", []);

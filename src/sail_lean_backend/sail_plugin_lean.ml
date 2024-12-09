@@ -91,6 +91,7 @@ let lean_options =
 let lean_rewrites =
   let open Rewrites in
   [
+    ("move_termination_measures", []);
     ("instantiate_outcomes", [String_arg "coq"]);
     ("realize_mappings", []);
     ("remove_vector_subrange_pats", []);
@@ -121,7 +122,6 @@ let lean_rewrites =
        which has to be followed by type checking *)
     (* ("prover_regstate", [Bool_arg false]); *)
     (* ("remove_assert", rewrite_ast_remove_assert); *)
-    ("move_termination_measures", []);
     ("top_sort_defs", []);
     ("const_prop_mutrec", [String_arg "coq"]);
     ("exp_lift_assign", []);
