@@ -1,4 +1,4 @@
-import Sail.sail
+import Out.Sail.Sail
 
 def foo (y : Unit) : Unit :=
   y

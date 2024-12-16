@@ -1,4 +1,4 @@
-import Sail.sail
+import Out.Sail.Sail
 
 def foo : BitVec 16 :=
   let z := (HOr.hOr (0xFFFF : BitVec 16) (0xABCD : BitVec 16))

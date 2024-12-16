@@ -1,4 +1,4 @@
-import Sail.sail
+import Out.Sail.Sail
 
 def extern_add : Int :=
   (Int.add 5 4)

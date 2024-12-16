@@ -1,4 +1,4 @@
-import Sail.sail
+import Out.Sail.Sail
 
 def foo (n : Int) : BitVec 4 :=
   (0xF : BitVec 4)

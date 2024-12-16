@@ -1,4 +1,4 @@
-import Sail.sail
+import Out.Sail.Sail
 
 inductive E where | A | B | C
   deriving Inhabited
