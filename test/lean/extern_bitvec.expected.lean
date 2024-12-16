@@ -1,4 +1,4 @@
-import Sail.sail
+import Out.Sail.Sail
 
 def extern_const : BitVec 64 :=
   (0xFFFF000012340000 : BitVec 64)

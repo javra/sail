@@ -158,7 +158,7 @@ let create_lake_project (out_name : string) default_sail_dir =
   let base_dir = match !opt_lean_output_dir with Some dir -> dir | None -> "." in
   let project_dir = Filename.concat base_dir out_name in
   if !opt_lean_force_output && Sys.file_exists project_dir && Sys.is_directory project_dir then (
-    let _ = Unix.system ("rm -r " ^ project_dir ^ "/*") in
+    let _ = Unix.system ("rm -r " ^ Filename.quote project_dir ^ "/*") in
     ()
   )
   else Unix.mkdir project_dir 0o775;
@@ -181,7 +181,10 @@ let create_lake_project (out_name : string) default_sail_dir =
   let lean_src_dir = Filename.concat project_dir out_name_camel in
   if not (Sys.file_exists lean_src_dir) then Unix.mkdir lean_src_dir 0o775;
   let sail_dir = Reporting.get_sail_dir default_sail_dir in
-  let _ = Unix.system ("cp -r " ^ sail_dir ^ "/src/sail_lean_backend/Sail " ^ lean_src_dir) in
+  let _ =
+    Unix.system
+      ("cp -r " ^ Filename.quote (sail_dir ^ "/src/sail_lean_backend/Sail") ^ " " ^ Filename.quote lean_src_dir)
+  in
   let project_main = open_out (Filename.concat project_dir (out_name_camel ^ ".lean")) in
   output_string project_main ("import " ^ out_name_camel ^ ".Sail.Sail\n\n");
   project_main
