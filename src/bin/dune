@@ -242,6 +242,6 @@
   (%{workspace_root}/src/gen_lib/sail2_values.lem
    as
    src/gen_lib/sail2_values.lem)
-  (%{workspace_root}/src/sail_lean_backend/Sail/sail.lean
+  (%{workspace_root}/src/sail_lean_backend/Sail/Sail.lean
    as
-   src/sail_lean_backend/Sail/sail.lean)))
+   src/sail_lean_backend/Sail/Sail.lean)))

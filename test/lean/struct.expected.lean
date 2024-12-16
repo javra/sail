@@ -1,4 +1,4 @@
-import Sail.sail
+import My_Project.Sail.sail
 
 structure My_struct where
   field1 : Int
@@ -10,4 +10,3 @@ def undefined_My_struct (lit : Unit) : My_struct :=
 
 def initialize_registers : Unit :=
   ()
-
