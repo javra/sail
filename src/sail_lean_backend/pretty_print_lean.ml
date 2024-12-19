@@ -9,6 +9,8 @@ open Rewriter
 open PPrint
 open Pretty_print_common
 
+module StringMap = Map.Make (String)
+
 let implicit_parens x = enclose (string "{") (string "}") x
 
 let doc_id_ctor (Id_aux (i, _)) =
@@ -283,6 +285,27 @@ let doc_typdef (TD_aux (td, tannot) as full_typdef) =
       nest 2 (flow (break 1) [string "structure"; string id; string "where"] ^^ hardline ^^ enums_doc)
   | _ -> failwith ("Type definition " ^ string_of_type_def_con full_typdef ^ " not translatable yet.")
 
+let string_of_def_con (DEF_aux (d, _)) =
+  match d with
+  | DEF_constraint _ -> "DEF_constraint"
+  | DEF_default _ -> "DEF_default"
+  | DEF_fixity _ -> "DEF_fixity"
+  | DEF_fundef _ -> "DEF_fundef"
+  | DEF_impl _ -> "DEF_impl"
+  | DEF_instantiation _ -> "DEF_instantiation"
+  | DEF_internal_mutrec _ -> "DEF_internal_mutrec"
+  | DEF_let _ -> "DEF_let"
+  | DEF_loop_measures _ -> "DEF_loop_measures"
+  | DEF_mapdef _ -> "DEF_mapdef"
+  | DEF_measure _ -> "DEF_measure"
+  | DEF_outcome _ -> "DEF_outcome"
+  | DEF_overload _ -> "DEF_overload"
+  | DEF_pragma _ -> "DEF_pragma"
+  | DEF_register _ -> "DEF_register"
+  | DEF_scattered _ -> "DEF_scattered"
+  | DEF_type _ -> "DEF_type"
+  | DEF_val _ -> "DEF_val"
+
 let doc_def (DEF_aux (aux, def_annot) as def) =
   match aux with
   | DEF_fundef fdef -> group (doc_fundef fdef) ^/^ hardline
@@ -297,8 +320,23 @@ let rec remove_imports (defs : (Libsail.Type_check.tannot, Libsail.Type_check.en
   | DEF_aux (DEF_pragma ("include_end", _, _), _) :: ds -> remove_imports ds (depth - 1)
   | d :: ds -> if depth > 0 then remove_imports ds depth else d :: remove_imports ds depth
 
-let pp_ast_lean ({ defs; _ } as ast : Libsail.Type_check.typed_ast) o =
-  let defs = remove_imports defs 0 in
-  let output : document = separate_map empty doc_def defs in
-  print o output;
-  ()
+let rec collect_imports defs =
+  match defs with
+  | [] -> []
+  | DEF_aux (DEF_pragma ("include_start", x, _), _) :: ds -> x :: collect_imports ds
+  | d :: ds -> collect_imports ds
+
+let rec pp_ast_lean (defs : (tannot, env) def list) (import_outputs : (string * out_channel) StringMap.t)
+    main_output =
+  match defs with
+  | [] -> []
+  | DEF_aux (DEF_pragma ("include_end", _, _), _) :: ds -> 
+    ds
+  | DEF_aux (DEF_pragma ("include_start", file, _), _) :: ds ->
+    let (new_module, new_main) = StringMap.find file import_outputs in
+    print main_output (string ("import ") ^^ string new_module ^^ hardline ^^ hardline);
+    let defs_after_import = pp_ast_lean ds import_outputs new_main in
+    pp_ast_lean defs_after_import import_outputs main_output
+  | d :: ds ->
+    print main_output (doc_def d);
+    pp_ast_lean ds import_outputs main_output

@@ -187,13 +187,30 @@ let create_lake_project (out_name : string) default_sail_dir =
   in
   let project_main = open_out (Filename.concat project_dir (out_name_camel ^ ".lean")) in
   output_string project_main ("import " ^ out_name_camel ^ ".Sail.Sail\n\n");
-  project_main
+  (lean_src_dir, project_main)
 
-let output (out_name : string) ast default_sail_dir =
-  let project_main = create_lake_project out_name default_sail_dir in
+let output (out_name : string) ({ defs; _ } as ast : Libsail.Type_check.typed_ast) default_sail_dir =
+  let lean_src_dir, project_main = create_lake_project out_name default_sail_dir in
   (* Uncomment for debug output of the Sail code after the rewrite passes *)
-  (* Pretty_print_sail.output_ast stdout (Type_check.strip_ast ast); *)
-  Pretty_print_lean.pp_ast_lean ast project_main;
+  Pretty_print_sail.output_ast stdout (Type_check.strip_ast ast);
+  (* let (defs, _) = ast in *)
+  let imports = Pretty_print_lean.collect_imports defs in
+  let ref foo : out_channel Pretty_print_lean.StringMap.t = Pretty_print_lean.StringMap.empty in
+  (* Build a map from strings to output channels for each imported file. *)
+  let import_outputs =
+    List.fold_left
+      (fun map file ->
+        let filename = Libsail.Util.to_upper_camel_case (Filename.chop_suffix (Filename.basename file) ".sail") in
+        let new_out = open_out (Filename.concat lean_src_dir (filename ^ ".lean")) in
+        let out_name_camel = Libsail.Util.to_upper_camel_case out_name in
+        let module_name = out_name_camel ^ "." ^ filename in
+        Pretty_print_lean.StringMap.add file (module_name, new_out) map
+      )
+      Pretty_print_lean.StringMap.empty imports
+  in
+  (* let defs = Pretty_print_lean.remove_imports defs 0 in *)
+  let _ = Pretty_print_lean.pp_ast_lean defs import_outputs project_main in
+  Pretty_print_lean.StringMap.iter (fun _ (_, ch) -> close_out ch) import_outputs;
   close_out project_main
 
 let lean_target out_name { default_sail_dir; ctx; ast; effect_info; env; _ } =
