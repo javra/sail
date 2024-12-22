@@ -622,6 +622,14 @@ let value_parse_hex_bits = function
   | [v1; v2] -> mk_vector (Sail_lib.parse_hex_bits (coerce_int v1, coerce_string v2))
   | _ -> failwith "value parse_hex_bits"
 
+let value_valid_dec_bits = function
+  | [v1; v2] -> V_bool (Sail_lib.valid_dec_bits (coerce_int v1, coerce_string v2))
+  | _ -> failwith "value valid_dec_bits"
+
+let value_parse_dec_bits = function
+  | [v1; v2] -> mk_vector (Sail_lib.parse_dec_bits (coerce_int v1, coerce_string v2))
+  | _ -> failwith "value parse_dec_bits"
+
 let value_emulator_read_mem = function
   | [v1; v2; v3] -> mk_vector (Sail_lib.emulator_read_mem (coerce_int v1, coerce_bv v2, coerce_int v3))
   | _ -> failwith "value emulator_read_mem"
@@ -822,6 +830,8 @@ let primops =
          ("hex_str_upper", value_hex_str_upper);
          ("parse_hex_bits", value_parse_hex_bits);
          ("valid_hex_bits", value_valid_hex_bits);
+         ("parse_dec_bits", value_parse_dec_bits);
+         ("valid_dec_bits", value_valid_dec_bits);
          ("skip", fun _ -> V_unit);
        ]
     )

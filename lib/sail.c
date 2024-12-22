@@ -1685,6 +1685,58 @@ void decimal_string_of_lbits(sail_string *str, const lbits op)
   gmp_asprintf(str, "%Z", *op.bits);
 }
 
+void parse_dec_bits(lbits *res, const mpz_t n, const_sail_string dec)
+{
+    if (!valid_dec_bits(n, dec)) {
+        goto failure;
+    }
+
+    mpz_t value;
+    mpz_init(value);
+    
+    if (mpz_set_str(value, dec, 10) == 0) {
+        res->len = mpz_get_ui(n);
+        mpz_set(*(res->bits), value);
+        mpz_clear(value);
+        return;
+    }
+    mpz_clear(value);
+
+failure:
+    res->len = mpz_get_ui(n);
+    mpz_set_ui(*(res->bits), 0);
+}
+
+bool valid_dec_bits(const mpz_t n, const_sail_string dec)
+{
+    size_t len = strlen(dec);
+
+    if (len < 1) {
+        return false;
+    }
+
+    for (size_t i = 0; i < len; i++) {
+        if (!('0' <= dec[i] && dec[i] <= '9')) {
+            return false;
+        }
+    }
+
+    mpz_t value;
+    mpz_init(value);
+
+    if (mpz_set_str(value, dec, 10) != 0) {
+        mpz_clear(value);
+        return false;
+    }
+
+    size_t bit_width = mpz_sizeinbase(value, 2);
+
+    bool valid = (bit_width <= mpz_get_ui(n));
+
+    mpz_clear(value);
+    return valid;
+}
+
 void parse_hex_bits(lbits *res, const mpz_t n, const_sail_string hex)
 {
   if (!valid_hex_bits(n, hex)) {

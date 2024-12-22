@@ -492,6 +492,10 @@ void decimal_string_of_fbits(sail_string *str, const fbits op);
 
 /* ***** Mapping support ***** */
 
+void parse_dec_bits(lbits *res, const mpz_t n, const char *dec);
+
+bool valid_dec_bits(const mpz_t n, const char *dec);
+
 void parse_hex_bits(lbits *stro, const mpz_t n, const_sail_string str);
 
 bool valid_hex_bits(const mpz_t n, const_sail_string str);
