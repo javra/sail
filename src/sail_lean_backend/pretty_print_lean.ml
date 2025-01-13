@@ -223,7 +223,7 @@ let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
     | Typ_aux (Typ_fn (arg_typs, ret_typ), _) -> (arg_typs, ret_typ, no_effect)
     | _ -> failwith ("Function " ^ string_of_id id ^ " does not have function type")
   in
-  let pat, _, _, _ = destruct_pexp pexp in
+  let pat, _, exp, _ = destruct_pexp pexp in
   let pats, _ = untuple_args_pat arg_typs pat in
   let binders : (id * typ) list =
     pats
@@ -240,11 +240,18 @@ let doc_funcl_init (FCL_aux (FCL_funcl (id, pexp), annot)) =
   (* let binders = doc_typ_quant tq @ binders in *)
   (* Use auto-implicits for type quanitifiers for now and see if this works *)
   let doc_ret_typ = doc_typ ret_typ in
-  separate space ([string "def"; string (string_of_id id)] @ binders @ [colon; doc_ret_typ; coloneq])
+  let is_monadic = effectful (effect_of exp) in
+  (* Add monad for stateful functions *)
+  let doc_ret_typ = if is_monadic then string "SailM " ^^ doc_ret_typ else doc_ret_typ in
+  let decl_val = [doc_ret_typ; coloneq] in
+  (* Add do block for stateful functions *)
+  let decl_val = if is_monadic then decl_val @ [string "do"] else decl_val in
+  separate space ([string "def"; string (string_of_id id)] @ binders @ [colon] @ decl_val)
 
 let doc_funcl_body (FCL_aux (FCL_funcl (id, pexp), annot)) =
   let _, _, exp, _ = destruct_pexp pexp in
-  doc_exp exp
+  let is_monadic = effectful (effect_of exp) in
+  if is_monadic then nest 2 (flow (break 1) [string "return"; doc_exp exp]) else doc_exp exp
 
 let doc_funcl funcl = nest 2 (doc_funcl_init funcl ^^ hardline ^^ doc_funcl_body funcl)
 
