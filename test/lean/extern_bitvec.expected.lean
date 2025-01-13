@@ -1,5 +1,7 @@
 import Out.Sail.Sail
 
+open Sail
+
 def extern_const : BitVec 64 :=
   (0xFFFF000012340000 : BitVec 64)
 

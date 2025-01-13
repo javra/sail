@@ -1,5 +1,7 @@
 import Out.Sail.Sail
 
+open Sail
+
 def foo (n : Int) : BitVec 4 :=
   (0xF : BitVec 4)
 
