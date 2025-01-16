@@ -372,7 +372,7 @@ let doc_typdef ctxt (TD_aux (td, tannot) as full_typdef) =
   | TD_record (Id_aux (Id id, _), TypQ_aux (tq, _), fields, _) ->
       let fields = List.map (doc_typ_id ctxt) fields in
       let enums_doc = separate hardline fields in
-      let rectyp = doc_typ_quant ctxt tq in 
+      let rectyp = doc_typ_quant ctxt tq in
       (* TODO don't ignore type quantifiers *)
       nest 2 (flow (break 1) [string "structure"; string id; string "where"] ^^ hardline ^^ enums_doc)
   | TD_abbrev (Id_aux (Id id, _), tq, A_aux (A_typ t, _)) ->
