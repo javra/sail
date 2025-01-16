@@ -8,7 +8,7 @@
 /*  The ASL derived parts of the ARMv8.3 specification in                   */
 /*  aarch64/no_vector and aarch64/full are copyright ARM Ltd.               */
 /*                                                                          */
-/*  Copyright (c) 2013-2021                                                 */
+/*  Copyright (c) 2013-2024                                                 */
 /*    Kathyrn Gray                                                          */
 /*    Shaked Flur                                                           */
 /*    Stephen Kell                                                          */
@@ -44,62 +44,33 @@
 /*  SPDX-License-Identifier: BSD-2-Clause                                   */
 /*==========================================================================*/
 
-$ifndef _STRING
-$define _STRING
+$sail_internal
 
-$include <arith.sail>
+$ifndef _CONCURRENCY_INTERFACE_SYSREG
+$define _CONCURRENCY_INTERFACE_SYSREG
 
-val eq_string = pure {lem: "eq", coq: "generic_eq", _: "eq_string"} : (string, string) -> bool
+$include <concurrency_interface/common.sail>
 
-overload operator == = {eq_string}
+/* An experimental interface for reporting explicit system register
+   accesses to concurrency models.  The id doesn't need to match the
+   actual model register used - it could be (for example) the
+   identifier used in the instruction for the access.
 
-val concat_str = pure {coq: "String.append", lem: "stringAppend", _: "concat_str"} : (string, string) -> string
+   At the moment there is some support for this in the Coq backend,
+   in addition to the plain emulation implementation below. */
 
-val dec_str = pure "dec_str" : int -> string
+outcome sail_sys_reg_write : forall 'a. ('id, register('a), 'a) -> unit
+with
+  'id : Type
+= {
+  impl emulator_or_isla(_id, reg, value) = *reg = value
+}
 
-val hex_str = pure "hex_str" : int -> string
-
-val hex_str_upper = pure "hex_str_upper" : int -> string
-
-val bits_str = pure "string_of_bits" : forall 'n. bitvector('n, dec) -> string
-
-val concat_str_bits : forall 'n. (string, bitvector('n, dec)) -> string
-
-function concat_str_bits(str, x) = concat_str(str, bits_str(x))
-
-val concat_str_dec : (string, int) -> string
-
-function concat_str_dec(str, x) = concat_str(str, dec_str(x))
-
-/* Usually printing is used for diagnostic messages that are not part of the architecture and can
-   be ignored during theorem proving.  It is often helpful to do this to reduce the amount of
-   side-effects present in the model, but we also provide an alternative version that collects
-   messages (currently supported by the Coq back-end). */
-
-$ifndef PRINT_EFFECTS
-
-$[sv_module { stdout = true }]
-val print_endline = pure "print_endline" : string -> unit
-
-$[sv_module { stderr = true }]
-val prerr_endline = pure "prerr_endline" : string -> unit
-
-$[sv_module { stdout = true }]
-val print = pure "print" : string -> unit
-
-$[sv_module { stderr = true }]
-val prerr = pure "prerr" : string -> unit
-
-$else
-
-val print_endline = impure "print_endline_effect" : string -> unit
-
-val prerr_endline = impure "prerr_endline_effect" : string -> unit
-
-val print = impure "print_effect" : string -> unit
-
-val prerr = impure "prerr_effect" : string -> unit
-
-$endif
+outcome sail_sys_reg_read : forall 'a. ('id, register('a)) -> 'a
+with
+  'id : Type
+= {
+  impl emulator_or_isla(_id, reg) = *reg
+}
 
 $endif

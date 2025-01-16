@@ -3484,9 +3484,12 @@ module MakeExhaustive = struct
   }
 
   let make_enum_mappings ids m =
-    IdSet.fold
-      (fun id m -> Bindings.add id (List.map (fun e -> RP_enum e) (IdSet.elements (IdSet.remove id ids))) m)
-      ids m
+    let all_ids = List.map (fun e -> RP_enum e) (IdSet.elements ids) in
+    IdSet.fold (fun id m -> Bindings.add id all_ids m) ids m
+
+  let get_residual_enum ctx id =
+    let all_ids = Bindings.find id ctx.enum_to_rest in
+    List.filter (function RP_enum id' -> Id.compare id id' <> 0 | _ -> false) all_ids
 
   let make_cstr_mappings env ids m =
     let ids = IdSet.elements ids in
@@ -3566,7 +3569,7 @@ module MakeExhaustive = struct
           match Env.lookup_id id ctx.env with
           | Enum enum -> (
               match res_pat with
-              | RP_any -> (Bindings.find id ctx.enum_to_rest, true)
+              | RP_any -> (get_residual_enum ctx id, true)
               | RP_enum id' -> if Id.compare id id' == 0 then ([], true) else ([res_pat], false)
               | _ -> inconsistent ()
             )
@@ -3866,14 +3869,20 @@ let move_loop_measures ast =
         (Bindings.add id measures m, FCL_aux (FCL_funcl (id, pexp), ann) :: acc)
     | None -> (m, fcl :: acc)
   in
+  let do_fundef wrap (m, acc) (FD_aux (FD_function (r, t, fcls), ann)) =
+    let m, rfcls = List.fold_left do_funcl (m, []) fcls in
+    (m, wrap (FD_aux (FD_function (r, t, List.rev rfcls), ann)) :: acc)
+  in
   let unused, rev_defs =
     List.fold_left
       (fun (m, acc) d ->
         match d with
         | DEF_aux (DEF_loop_measures _, _) -> (m, acc)
-        | DEF_aux (DEF_fundef (FD_aux (FD_function (r, t, fcls), ann)), def_annot) ->
-            let m, rfcls = List.fold_left do_funcl (m, []) fcls in
-            (m, DEF_aux (DEF_fundef (FD_aux (FD_function (r, t, List.rev rfcls), ann)), def_annot) :: acc)
+        | DEF_aux (DEF_fundef fundef, def_annot) ->
+            do_fundef (fun f -> DEF_aux (DEF_fundef f, def_annot)) (m, acc) fundef
+        | DEF_aux (DEF_internal_mutrec fundefs, def_annot) ->
+            let m, rfundefs = List.fold_left (do_fundef (fun f -> f)) (m, []) fundefs in
+            (m, DEF_aux (DEF_internal_mutrec (List.rev rfundefs), def_annot) :: acc)
         | _ -> (m, d :: acc)
       )
       (loop_measures, []) ast.defs
@@ -4406,8 +4415,14 @@ let rewrite_toplevel_let_patterns env ast =
           let ids = pat_ids pat in
           let base_id = fresh_id "let" l in
           let base_annot = mk_tannot env (typ_of exp) in
+          (* We may need the type information for (e.g.) records *)
+          let add_pat_typ p =
+            match pat with P_aux (P_typ (typ, _), (l, _)) -> P_aux (P_typ (typ, p), (l, mk_tannot env typ)) | _ -> p
+          in
           let base_def =
-            mk_def (DEF_let (LB_aux (LB_val (P_aux (P_id base_id, (l, base_annot)), exp), (l, empty_tannot)))) env
+            mk_def
+              (DEF_let (LB_aux (LB_val (add_pat_typ (P_aux (P_id base_id, (l, base_annot))), exp), (l, empty_tannot))))
+              env
           in
           let id_defs =
             List.map

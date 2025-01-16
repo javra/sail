@@ -176,6 +176,8 @@ let mpat_loc = function MP_aux (_, (l, _)) -> l
 
 let exp_loc = function E_aux (_, (l, _)) -> l
 
+let lexp_loc = function LE_aux (_, (l, _)) -> l
+
 let nexp_loc = function Nexp_aux (_, l) -> l
 
 let constraint_loc = function NC_aux (_, l) -> l
@@ -690,7 +692,7 @@ let bit_typ = mk_id_typ (mk_id "bit")
 let real_typ = mk_id_typ (mk_id "real")
 let app_typ id args = mk_typ (Typ_app (id, args))
 let register_typ typ = mk_typ (Typ_app (mk_id "register", [mk_typ_arg (A_typ typ)]))
-let atom_typ nexp = mk_typ (Typ_app (mk_id "atom", [mk_typ_arg (A_nexp (nexp_simp nexp))]))
+let atom_typ nexp = mk_typ (Typ_app (mk_id "atom", [mk_typ_arg (A_nexp nexp)]))
 let implicit_typ nexp = mk_typ (Typ_app (mk_id "implicit", [mk_typ_arg (A_nexp (nexp_simp nexp))]))
 let range_typ nexp1 nexp2 =
   mk_typ (Typ_app (mk_id "range", [mk_typ_arg (A_nexp (nexp_simp nexp1)); mk_typ_arg (A_nexp (nexp_simp nexp2))]))
@@ -1135,6 +1137,11 @@ let prepend_id str = function
 
 let append_id id str =
   match id with Id_aux (Id v, l) -> Id_aux (Id (v ^ str), l) | Id_aux (Operator v, l) -> Id_aux (Operator (v ^ str), l)
+
+let remove_id_suffix id str =
+  match id with
+  | Id_aux (Id v, l) -> remove_suffix v str |> Option.map (fun s -> Id_aux (Id s, l))
+  | Id_aux (Operator v, l) -> remove_suffix v str |> Option.map (fun s -> Id_aux (Operator s, l))
 
 let prepend_kid str = function
   | Kid_aux (Var v, l) -> Kid_aux (Var ("'" ^ str ^ String.sub v 1 (String.length v - 1)), l)

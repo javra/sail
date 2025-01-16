@@ -9,7 +9,7 @@ EXTRATESTSDIR="$DIR/pass"
 
 printf "\$SAIL is $SAIL\n"
 
-if opam config var coq-sail:share >/dev/null 2>/dev/null; then
+if opam config var coq-sail:share >/dev/null 2>/dev/null && [ -z "$COQSAIL" ]; then
   COQOPTS=""
 else
   if [ -z "$COQSAIL" ]; then
@@ -47,7 +47,7 @@ function check_tests_dir {
     TESTSDIR="$1"
     for i in `ls $TESTSDIR/ | grep sail | grep -vf "$DIR/skip"`;
     do
-        if $SAIL -coq -dcoq_undef_axioms -o out $TESTSDIR/$i &>/dev/null;
+        if $SAIL -coq -coq-lib-style stdpp -dcoq_undef_axioms --strict-bitvector -o out $TESTSDIR/$i &>/dev/null;
         then
     	if coqc $COQOPTS out_types.v &>/dev/null &&
     	   coqc $COQOPTS out.v &>/dev/null;

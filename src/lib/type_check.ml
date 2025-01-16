@@ -1145,6 +1145,8 @@ let rec rewrite_sizeof' l env (Nexp_aux (aux, _) as nexp) =
         | Typ_app (id, [A_aux (A_nexp n, _)]) when string_of_id id = "atom" -> prove __POS__ env (nc_eq (nvar v) n)
         | Typ_app (id, [A_aux (A_nexp (Nexp_aux (Nexp_var v', _)), _)]) when string_of_id id = "bitvector" ->
             Kid.compare v v' = 0
+        | Typ_app (id, [A_aux (A_nexp (Nexp_aux (Nexp_var v', _)), _); _]) when string_of_id id = "vector" ->
+            Kid.compare v v' = 0
         | _ -> false
       in
       begin
@@ -2328,7 +2330,7 @@ let rec check_exp env (E_aux (exp_aux, (l, uannot)) as exp : uannot exp) (Typ_au
           in
           let checked_exp = crule check_exp env exp typ in
           annot_exp (E_var (lexp, bind, checked_exp)) typ
-      | Update -> typ_error l "var expression can only be used to declare new variables, not update them"
+      | Update -> typ_error (lexp_loc lexp) "var expression can only be used to declare new variables, not update them"
     end
   | E_internal_return exp, _ ->
       let checked_exp = crule check_exp env exp typ in
@@ -2344,27 +2346,27 @@ let rec check_exp env (E_aux (exp_aux, (l, uannot)) as exp : uannot exp) (Typ_au
             let inferred_bind = irule infer_exp env bind in
             (inferred_bind, typ_of inferred_bind)
       in
-      let tpat, env = bind_pat_no_guard env pat ptyp in
+      let tpat, inner_env = bind_pat_no_guard env pat ptyp in
       (* Propagate constraint assertions on the lhs of monadic binds to the rhs *)
-      let env =
+      let inner_env =
         match bind_exp with
         | E_aux (E_assert (constr_exp, _), _) -> begin
-            match assert_constraint env true constr_exp with
+            match assert_constraint inner_env true constr_exp with
             | Some nc ->
                 typ_print (lazy ("Adding constraint " ^ string_of_n_constraint nc ^ " for assert"));
-                Env.add_constraint nc env
-            | None -> env
+                Env.add_constraint nc inner_env
+            | None -> inner_env
           end
         | E_aux (E_if (cond, e_t, _), _) -> begin
             match unaux_exp (fst (uncast_exp e_t)) with
             | E_throw _ | E_block [E_aux (E_throw _, _)] ->
-                add_opt_constraint l "if-throw" (Option.map nc_not (assert_constraint env false cond)) env
-            | _ -> env
+                add_opt_constraint l "if-throw" (Option.map nc_not (assert_constraint inner_env false cond)) inner_env
+            | _ -> inner_env
           end
-        | _ -> env
+        | _ -> inner_env
       in
-      let checked_body = crule check_exp env body typ in
-      annot_exp (E_internal_plet (tpat, bind_exp, checked_body)) typ
+      let checked_body = crule check_exp inner_env body typ in
+      annot_exp (E_internal_plet (tpat, bind_exp, checked_body)) (check_shadow_leaks l inner_env env typ)
   | E_vector vec, orig_typ -> begin
       let literal_len = List.length vec in
       let tyvars, nc, typ =
@@ -2385,7 +2387,11 @@ let rec check_exp env (E_aux (exp_aux, (l, uannot)) as exp : uannot exp) (Typ_au
           (tyvars, nc, elem_typ)
         )
         else if prove __POS__ env (nc_eq (nint literal_len) (nexp_simp len)) then (tyvars, nc, elem_typ)
-        else typ_error l "Vector literal with incorrect length"
+        else
+          typ_error l
+            ("Vector literal with incorrect length: found " ^ string_of_int literal_len ^ " elements, but expected "
+           ^ string_of_nexp len
+            )
       in
       match check_or_infer_sequence ~at:l env vec tyvars nc (Some elem_typ) with
       | Some (vec, elem_typ) ->
@@ -3751,21 +3757,23 @@ and infer_exp env (E_aux (exp_aux, (l, uannot)) as exp) =
             let inferred_bind = irule infer_exp env bind in
             (inferred_bind, typ_of inferred_bind)
       in
-      let tpat, env = bind_pat_no_guard env pat ptyp in
+      let tpat, inner_env = bind_pat_no_guard env pat ptyp in
       (* Propagate constraint assertions on the lhs of monadic binds to the rhs *)
-      let env =
+      let inner_env =
         match bind_exp with
         | E_aux (E_assert (constr_exp, _), _) -> begin
             match assert_constraint env true constr_exp with
             | Some nc ->
                 typ_print (lazy ("Adding constraint " ^ string_of_n_constraint nc ^ " for assert"));
-                Env.add_constraint nc env
-            | None -> env
+                Env.add_constraint nc inner_env
+            | None -> inner_env
           end
-        | _ -> env
+        | _ -> inner_env
       in
-      let inferred_body = irule infer_exp env body in
-      annot_exp (E_internal_plet (tpat, bind_exp, inferred_body)) (typ_of inferred_body)
+      let inferred_body = irule infer_exp inner_env body in
+      annot_exp
+        (E_internal_plet (tpat, bind_exp, inferred_body))
+        (check_shadow_leaks l inner_env env (typ_of inferred_body))
   | E_let (LB_aux (letbind, (let_loc, _)), exp) ->
       let bind_exp, pat, ptyp =
         match letbind with
@@ -3964,7 +3972,6 @@ and infer_funapp' l env f (typq, f_typ) xs uannot expected_ret_typ =
               );
           List.iter (fun unifier -> quants := instantiate_quants !quants unifier) unifiers;
           List.iter (fun (v, arg) -> typ_ret := typ_subst v arg !typ_ret) unifiers;
-          let remaining_typs = instantiate_return_type remaining_typs in
           let remaining_typs =
             List.map (fun typ -> List.fold_left (fun typ (v, arg) -> typ_subst v arg typ) typ unifiers) remaining_typs
           in
@@ -3988,6 +3995,7 @@ and infer_funapp' l env f (typq, f_typ) xs uannot expected_ret_typ =
       | [] -> raise (Reporting.err_unreachable l __POS__ "Empty arguments during instantiation")
     in
     let xs, typ_args, env, deferred = List.fold_left fold_instantiate ([], typ_args, env, []) xs in
+    let typ_args = instantiate_return_type typ_args in
     let num_deferred = List.length deferred in
     typ_debug (lazy (Printf.sprintf "Have %d deferred arguments" num_deferred));
     if num_deferred = previously_deferred then (xs, env)
@@ -4017,7 +4025,11 @@ and infer_funapp' l env f (typq, f_typ) xs uannot expected_ret_typ =
   let solve_implicit impl =
     match KBindings.find_opt impl !all_unifiers with
     | Some (A_aux (A_nexp (Nexp_aux (Nexp_constant c, _)), _)) -> irule infer_exp env (mk_lit_exp (L_num c))
-    | Some (A_aux (A_nexp n, _)) -> irule infer_exp env (mk_exp (E_sizeof n))
+    | Some (A_aux (A_nexp n, _)) -> begin
+        try irule infer_exp env (mk_exp ~loc:l (E_sizeof n))
+        with Type_error (l, err) ->
+          typ_raise l (Err_inner (Err_other "Unable to solve implicit function argument", Parse_ast.Unknown, "", err))
+      end
     | _ ->
         typ_error l
           ("Cannot solve implicit " ^ string_of_kid impl ^ " in "
@@ -4574,13 +4586,14 @@ let check_fundef_lazy env def_annot (FD_aux (FD_function (recopt, tannot_opt, fu
     | None -> typ_error l "funcl list is empty"
   in
   typ_print (lazy ("\n" ^ Util.("Check function " |> cyan |> clear) ^ string_of_id id));
-  let have_val_spec, (quant, typ), env =
+  let have_val_spec, (quant_ast, typ_ast), (quant, typ), env =
     match Env.get_val_spec_opt id env with
-    | Some (bind, l) -> (Some l, bind, env)
+    | Some (bind, l) -> (Some l, bind, bind, env)
     | None ->
         (* No val, so get the function type from annotations attached to clauses *)
         let bind = infer_funtyp l env tannot_opt funcls in
-        (None, bind, env)
+        let bind' = expand_bind_synonyms l env bind in
+        (None, (if !opt_expand_valspec then bind' else bind), bind', env)
     | exception Type_error (l, Err_not_in_scope (_, scope_l, item_scope, into_scope, is_opened, priv)) ->
         (* If we defined the function type with val in another module, but didn't require it. *)
         let reason = if priv then "private." else "not in scope." in
@@ -4638,7 +4651,7 @@ let check_fundef_lazy env def_annot (FD_aux (FD_function (recopt, tannot_opt, fu
   in
   let vs_def, env =
     if Option.is_none have_val_spec then
-      ([synthesize_val_spec env id quant typ def_annot], Env.add_val_spec id (quant, typ) env)
+      ([synthesize_val_spec env id quant_ast typ_ast def_annot], Env.add_val_spec id (quant, typ) env)
     else ([], env)
   in
   (* For performance, we can lazily check the body if we need it later *)

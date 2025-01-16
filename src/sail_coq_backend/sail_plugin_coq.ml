@@ -102,6 +102,10 @@ let coq_options =
       Arg.Set Pretty_print_coq.opt_undef_axioms,
       "generate axioms for functions that are declared but not defined"
     );
+    ( Flag.create ~prefix:["coq"] "minimal_eq_dec",
+      Arg.Clear Pretty_print_coq.opt_coq_all_eq_dec,
+      " generate decidable equality instances only when necessary"
+    );
     ( Flag.create ~prefix:["coq"] ~debug:true "warn_nonex",
       Arg.Set Rewrites.opt_coq_warn_nonexhaustive,
       "generate warnings for non-exhaustive pattern matches in the Coq backend"
@@ -142,8 +146,10 @@ let coq_rewrites =
     ("remove_bitfield_records", []);
     ("recheck_defs", []);
     (* Put prover regstate generation after removing bitfield records,
-       which has to be followed by type checking *)
-    ("prover_regstate", [Bool_arg true]);
+          which has to be followed by type checking.
+          This is the old regstate, so it's disabled now, but if we did something
+          like this again, this is where it would go.
+       ("prover_regstate", [Bool_arg true]);*)
     (* ("remove_assert", rewrite_ast_remove_assert); *)
     ("move_termination_measures", []);
     ("top_sort_defs", []);
