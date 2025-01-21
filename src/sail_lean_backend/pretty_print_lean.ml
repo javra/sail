@@ -299,7 +299,7 @@ let rec doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
   | E_app (Id_aux (Id "undefined_bitvector", _), _) (* TODO remove when we handle imports *)
   | E_app (Id_aux (Id "internal_pick", _), _) ->
       (* TODO replace by actual implementation of internal_pick *)
-      wrap_with_pure as_monadic (string "sorry")
+      string "sorry"
   | E_internal_plet _ -> string "sorry" (* TODO replace by actual implementation of internal_plet *)
   | E_app (f, args) ->
       let d_id =
@@ -310,7 +310,7 @@ let rec doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
       let fn_monadic = not (Effects.function_is_pure f ctx.global.effect_info) in
       nest 2 (wrap_with_pure (as_monadic && fn_monadic) (parens (flow (break 1) (d_id :: d_args))))
   | E_vector vals -> failwith "vector found"
-  | E_typ (typ, e) -> parens (separate space [doc_exp as_monadic ctx e; colon; doc_typ ctx typ])
+  | E_typ (typ, e) -> wrap_with_pure as_monadic (parens (separate space [doc_exp false ctx e; colon; doc_typ ctx typ]))
   | E_tuple es -> wrap_with_pure as_monadic (parens (separate_map (comma ^^ space) d_of_arg es))
   | E_let (LB_aux (LB_val (lpat, lexp), _), e) ->
       let id =

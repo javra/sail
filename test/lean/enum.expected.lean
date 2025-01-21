@@ -6,7 +6,7 @@ inductive E where | A | B | C
   deriving Inhabited
 
 def undefined_E : SailM E := do
-  (pure sorry)
+  sorry
 
 def initialize_registers : Unit :=
   ()

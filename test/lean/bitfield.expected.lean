@@ -5,7 +5,7 @@ open Sail
 def cr_type := (BitVec 8)
 
 def undefined_cr_type (lit : Unit) : SailM (BitVec 8) := do
-  (pure sorry)
+  sorry
 
 def Mk_cr_type (v : (BitVec 8)) : (BitVec 8) :=
   v
