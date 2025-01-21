@@ -25,6 +25,9 @@ def mk_struct (i : Int) (b : (BitVec 1)) : My_struct :=
   { field1 := i
     field2 := b }
 
+def undef_struct (x : (BitVec 1)) : SailM My_struct := do
+  ((undefined_My_struct ()) : SailM My_struct)
+
 def initialize_registers : Unit :=
   ()
 
