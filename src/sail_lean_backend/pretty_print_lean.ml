@@ -274,10 +274,10 @@ let string_of_exp_con (E_aux (e, _)) =
   | E_let _ -> "E_let"
 
 let wrap_with_pure (needs_return : bool) (d : document) =
-  if needs_return then parens (nest 2 (flow (break 1) [string "pure"; d])) else d
+  if needs_return then parens (nest 2 (flow space [string "pure"; d])) else d
 
 let wrap_with_left_arrow (needs_return : bool) (d : document) =
-  if needs_return then parens (nest 2 (flow (break 1) [string "←"; d])) else d
+  if needs_return then parens (nest 2 (flow space [string "←"; d])) else d
 
 let rec doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
   let env = env_of_tannot annot in
@@ -327,7 +327,7 @@ let rec doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
   | E_internal_return e -> doc_exp false ctx e (* ??? *)
   | E_struct fexps ->
       let args = List.map d_of_field fexps in
-      wrap_with_pure as_monadic (braces (space ^^ nest 2 (separate hardline args) ^^ space))
+      wrap_with_pure as_monadic (braces (space ^^ align (separate hardline args) ^^ space))
   | E_field (exp, id) ->
       (* TODO *)
       wrap_with_pure as_monadic (doc_exp false ctx exp ^^ dot ^^ doc_id_ctor id)
