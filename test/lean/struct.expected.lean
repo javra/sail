@@ -14,11 +14,10 @@ open Register
 abbrev RegisterType : Register → Type
   | .r => My_struct
 
-abbrev SailM := PreSailM RegisterType
-
 open RegisterRef
 instance : Inhabited (RegisterRef RegisterType My_struct) where
   default := .Reg r
+abbrev SailM := PreSailM RegisterType
 
 def undefined_My_struct (lit : Unit) : SailM My_struct := do
   (pure { field1 := (← sorry)
