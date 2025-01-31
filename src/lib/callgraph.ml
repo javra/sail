@@ -582,3 +582,27 @@ let slice_instantiation_types sail_dir ast =
   let g = G.prune roots NodeSet.empty g in
   let ast = filter_ast_extra NodeSet.empty g ast false in
   filter_library_files sail_dir ast
+
+module FCG = Graph.Make (Id)
+
+let function_call_graph ast =
+  let module G = Graph.Make (Id) in
+  let scan_funcl graph (FCL_aux (FCL_funcl (id, pexp), _)) =
+    let callees =
+      fold_pexp
+        {
+          (pure_exp_alg [] ( @ )) with
+          e_app = (fun (id', args) -> id' :: List.concat args);
+          e_app_infix = (fun (arg1, id', arg2) -> (id' :: arg1) @ arg2);
+        }
+        pexp
+    in
+    FCG.add_edges id callees graph
+  in
+  let scan_function graph (FD_aux (FD_function (_, _, funcls), _)) = List.fold_left scan_funcl graph funcls in
+  let scan_def graph = function
+    | DEF_aux (DEF_fundef fd, _) -> scan_function graph fd
+    | DEF_aux (DEF_internal_mutrec fds, _) -> List.fold_left scan_function graph fds
+    | _ -> graph
+  in
+  List.fold_left scan_def FCG.empty ast.defs

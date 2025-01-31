@@ -1754,12 +1754,18 @@ let swaptyp typ (l, tannot) =
   | Some (env, typ') -> (l, mk_tannot env typ)
   | _ -> raise (Reporting.err_unreachable l __POS__ "swaptyp called with empty type annotation")
 
-let is_funcl_rec (FCL_aux (FCL_funcl (id, pexp), _)) =
+let recursive_fn_map ast =
+  let cg = Callgraph.function_call_graph ast in
+  let components = Callgraph.FCG.scc cg in
+  List.fold_left (fun m ids -> List.fold_left (fun m id -> Bindings.add id ids m) m ids) Bindings.empty components
+
+let is_funcl_rec rec_fns (FCL_aux (FCL_funcl (id, pexp), _)) =
+  let ids = Bindings.find id rec_fns in
   fold_pexp
     {
       (pure_exp_alg false ( || )) with
-      e_app = (fun (id', args) -> Id.compare id id' == 0 || List.exists (fun x -> x) args);
-      e_app_infix = (fun (arg1, id', arg2) -> arg1 || arg2 || Id.compare id id' == 0);
+      e_app = (fun (id', args) -> List.exists (fun id -> Id.compare id id' == 0) ids || List.exists (fun x -> x) args);
+      e_app_infix = (fun (arg1, id', arg2) -> arg1 || arg2 || List.exists (fun id -> Id.compare id id' == 0) ids);
     }
     pexp
 
@@ -1767,9 +1773,10 @@ let is_funcl_rec (FCL_aux (FCL_funcl (id, pexp), _)) =
    recursive, so if a backend needs them then this rewrite updates
    them.  (Also see minimise_recursive_functions.) *)
 let rewrite_add_unspecified_rec env ast =
+  let rec_fn_map = recursive_fn_map ast in
   let rewrite_function (FD_aux (FD_function (recopt, topt, funcls), ann) as fd) =
     match recopt with
-    | Rec_aux (Rec_nonrec, l) when List.exists is_funcl_rec funcls ->
+    | Rec_aux (Rec_nonrec, l) when List.exists (is_funcl_rec rec_fn_map) funcls ->
         FD_aux (FD_function (Rec_aux (Rec_rec, Generated l), topt, funcls), ann)
     | _ -> fd
   in
@@ -3822,14 +3829,15 @@ end
 
 (* Splitting a function (e.g., an execute function on an AST) can produce
    new functions that appear to be recursive but are not.  This checks to
-   see if the flag can be turned off.  Doesn't handle mutual recursion
-   for now. *)
+   see if the flag can be turned off. *)
+
 let minimise_recursive_functions env ast =
+  let rec_fn_map = recursive_fn_map ast in
   let rewrite_function (FD_aux (FD_function (recopt, topt, funcls), ann) as fd) =
     match recopt with
     | Rec_aux (Rec_nonrec, _) -> fd
     | Rec_aux ((Rec_rec | Rec_measure _), l) ->
-        if List.exists is_funcl_rec funcls then fd
+        if List.exists (is_funcl_rec rec_fn_map) funcls then fd
         else FD_aux (FD_function (Rec_aux (Rec_nonrec, Generated l), topt, funcls), ann)
   in
   let rewrite_def = function
