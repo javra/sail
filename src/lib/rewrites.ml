@@ -3905,30 +3905,73 @@ let move_loop_measures ast =
   in
   { ast with defs = List.rev rev_defs }
 
+let called_fns_in_exp exp =
+  fold_exp
+    {
+      (pure_exp_alg [] ( @ )) with
+      e_app = (fun (id', args) -> id' :: List.concat args);
+      e_app_infix = (fun (arg1, id', arg2) -> (id' :: arg1) @ arg2);
+    }
+    exp
+
 (* Move recursive function termination measures into the function definitions. *)
 let move_termination_measures env ast =
-  let measures =
+  (* To ensure that the result will type check, we need to move any valspecs for functions
+     directly used in the measure forward.  The definitions themselves will be rearranged
+     later by the sorting rewrite.  Note that the type checker will ensure that a valspec
+     always exists. *)
+  let measures, called_fns =
     List.fold_left
-      (fun m def ->
+      (fun (m, called) def ->
         match def with
         | DEF_aux (DEF_measure (id, pat, exp), ann) ->
             if Bindings.mem id m then
               raise (Reporting.err_general ann.loc ("Second termination measure given for " ^ string_of_id id))
-            else Bindings.add id (pat, exp) m
+            else (
+              let called_fns = called_fns_in_exp exp in
+              (Bindings.add id (pat, exp, called_fns) m, List.fold_left (fun s id -> IdSet.add id s) called called_fns)
+            )
+        | _ -> (m, called)
+      )
+      (Bindings.empty, IdSet.empty) ast.defs
+  in
+  let specs_of_called =
+    List.fold_left
+      (fun m def ->
+        match def with
+        | DEF_aux (DEF_val (VS_aux (VS_val_spec (_, id, _), _)), _) as def when IdSet.mem id called_fns ->
+            Bindings.add id def m
         | _ -> m
       )
       Bindings.empty ast.defs
   in
+  let called_output = ref IdSet.empty in
   let rec aux acc = function
     | [] -> List.rev acc
     | (DEF_aux (DEF_fundef (FD_aux (FD_function (r, ty, fs), (l, f_ann))), def_annot) as d) :: t -> begin
         let id = match fs with [] -> assert false (* TODO *) | FCL_aux (FCL_funcl (id, _), _) :: _ -> id in
         match Bindings.find_opt id measures with
         | None -> aux (d :: acc) t
-        | Some (pat, exp) ->
+        | Some (pat, exp, called_fns) ->
             let r = Rec_aux (Rec_measure (pat, exp), Generated l) in
-            aux (DEF_aux (DEF_fundef (FD_aux (FD_function (r, ty, fs), (l, f_ann))), def_annot) :: acc) t
+            let new_def = DEF_aux (DEF_fundef (FD_aux (FD_function (r, ty, fs), (l, f_ann))), def_annot) in
+            let moved_val_specs =
+              List.fold_left
+                (fun moved id ->
+                  if not (IdSet.mem id !called_output) then (
+                    called_output := IdSet.add id !called_output;
+                    Bindings.find id specs_of_called :: moved
+                  )
+                  else moved
+                )
+                [] called_fns
+            in
+            aux ((new_def :: moved_val_specs) @ acc) t
       end
+    | DEF_aux (DEF_val (VS_aux (VS_val_spec (_, id, _), _)), _) :: t when IdSet.mem id !called_output -> aux acc t
+    | (DEF_aux (DEF_val (VS_aux (VS_val_spec (_, id, _), _)), _) as d) :: t ->
+        called_output := IdSet.add id !called_output;
+        aux (d :: acc) t
     | DEF_aux (DEF_measure _, _) :: t -> aux acc t
     | h :: t -> aux (h :: acc) t
   in
