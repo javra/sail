@@ -79,7 +79,7 @@ instance : Inhabited (RegisterRef RegisterType (BitVec 64)) where
   default := .Reg _PC
 abbrev SailM := PreSailM RegisterType
 
-def GPRs : Vector (RegisterRef RegisterType (BitVec 64)) 31 :=
+def GPRs : (Vector (RegisterRef RegisterType (BitVec 64)) 31) :=
   #v[Reg R30, Reg R29, Reg R28, Reg R27, Reg R26, Reg R25, Reg R24, Reg R23, Reg R22, Reg R21,
     Reg R20, Reg R19, Reg R18, Reg R17, Reg R16, Reg R15, Reg R14, Reg R13, Reg R12, Reg R11,
     Reg R10, Reg R9, Reg R8, Reg R7, Reg R6, Reg R5, Reg R4, Reg R3, Reg R2, Reg R1, Reg R0]

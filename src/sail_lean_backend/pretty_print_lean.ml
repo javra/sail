@@ -145,7 +145,7 @@ let rec doc_typ ctx (Typ_aux (t, _) as typ) =
   match t with
   | Typ_app (Id_aux (Id "vector", _), [A_aux (A_nexp m, _); A_aux (A_typ elem_typ, _)]) ->
       (* TODO: remove duplication with exists, below *)
-      string "Vector" ^^ space ^^ parens (doc_typ ctx elem_typ) ^^ space ^^ doc_nexp ctx m
+      nest 2 (parens (flow space [string "Vector"; doc_typ ctx elem_typ; doc_nexp ctx m]))
   | Typ_id (Id_aux (Id "unit", _)) -> string "Unit"
   | Typ_id (Id_aux (Id "int", _)) -> string "Int"
   | Typ_app (Id_aux (Id "atom_bool", _), _) | Typ_id (Id_aux (Id "bool", _)) -> string "Bool"
@@ -156,7 +156,7 @@ let rec doc_typ ctx (Typ_aux (t, _) as typ) =
       parens (string "BitVec " ^^ doc_nexp ctx m)
   | Typ_app (Id_aux (Id "atom", _), [A_aux (A_nexp x, _)]) -> if provably_nneg ctx x then string "Nat" else string "Int"
   | Typ_app (Id_aux (Id "register", _), t_app) ->
-      string "RegisterRef RegisterType " ^^ separate_map comma (doc_typ_app ctx) t_app
+      parens (string "RegisterRef RegisterType " ^^ separate_map comma (doc_typ_app ctx) t_app)
   | Typ_app (Id_aux (Id "implicit", _), [A_aux (A_nexp (Nexp_aux (Nexp_var ki, _)), _)]) ->
       underscore (* TODO check if the type of implicit arguments can really be always inferred *)
   | Typ_app (Id_aux (Id "option", _), [A_aux (A_typ typ, _)]) -> parens (string "Option " ^^ doc_typ ctx typ)
