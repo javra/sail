@@ -3,11 +3,13 @@ import Out.Sail.Sail
 open Sail
 
 inductive e_test where | VAL
-  deriving Inhabited
+  deriving Inhabited, DecidableEq
+
 open e_test
 
 structure s_test where
   f : e_test
+  deriving Inhabited, DecidableEq
 
 abbrev SailM := StateM Unit
 

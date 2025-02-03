@@ -5,6 +5,7 @@ open Sail
 structure My_struct where
   field1 : Int
   field2 : (BitVec 1)
+  deriving Inhabited, DecidableEq
 
 abbrev SailM := StateM Unit
 
