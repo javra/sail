@@ -73,5 +73,11 @@ def updateSubrange' {w : Nat} (x : BitVec w) (start len : Nat) (y : BitVec len) 
 def updateSubrange {w : Nat} (x : BitVec w) (hi lo : Nat) (y : BitVec (hi - lo + 1)) : BitVec w :=
   updateSubrange' x lo _ y
 
+def access {w : Nat} (x : BitVec w) (i : Nat) : BitVec 1 :=
+  BitVec.ofBool x[i]!
+
+def addInt {w : Nat} (x : BitVec w) (i : Int) : BitVec w :=
+  x + BitVec.ofInt w i
+
 end BitVec
 end Sail
