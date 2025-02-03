@@ -29,7 +29,7 @@ def _get_cr_type_bits (v : (BitVec 8)) : (BitVec 8) :=
 def _update_cr_type_bits (v : (BitVec 8)) (x : (BitVec 8)) : (BitVec 8) :=
   (Sail.BitVec.updateSubrange v (HSub.hSub 8 1) 0 x)
 
-def _set_cr_type_bits (r_ref : RegisterRef RegisterType (BitVec 8)) (v : (BitVec 8)) : SailM Unit := do
+def _set_cr_type_bits (r_ref : (RegisterRef RegisterType (BitVec 8))) (v : (BitVec 8)) : SailM Unit := do
   let r := (← (reg_deref r_ref))
   writeRegRef r_ref (_update_cr_type_bits r v)
 
@@ -39,7 +39,7 @@ def _get_cr_type_CR0 (v : (BitVec 8)) : (BitVec 4) :=
 def _update_cr_type_CR0 (v : (BitVec 8)) (x : (BitVec 4)) : (BitVec 8) :=
   (Sail.BitVec.updateSubrange v 7 4 x)
 
-def _set_cr_type_CR0 (r_ref : RegisterRef RegisterType (BitVec 8)) (v : (BitVec 4)) : SailM Unit := do
+def _set_cr_type_CR0 (r_ref : (RegisterRef RegisterType (BitVec 8))) (v : (BitVec 4)) : SailM Unit := do
   let r := (← (reg_deref r_ref))
   writeRegRef r_ref (_update_cr_type_CR0 r v)
 
@@ -49,7 +49,7 @@ def _get_cr_type_CR1 (v : (BitVec 8)) : (BitVec 2) :=
 def _update_cr_type_CR1 (v : (BitVec 8)) (x : (BitVec 2)) : (BitVec 8) :=
   (Sail.BitVec.updateSubrange v 3 2 x)
 
-def _set_cr_type_CR1 (r_ref : RegisterRef RegisterType (BitVec 8)) (v : (BitVec 2)) : SailM Unit := do
+def _set_cr_type_CR1 (r_ref : (RegisterRef RegisterType (BitVec 8))) (v : (BitVec 2)) : SailM Unit := do
   let r := (← (reg_deref r_ref))
   writeRegRef r_ref (_update_cr_type_CR1 r v)
 
@@ -59,7 +59,7 @@ def _get_cr_type_CR3 (v : (BitVec 8)) : (BitVec 2) :=
 def _update_cr_type_CR3 (v : (BitVec 8)) (x : (BitVec 2)) : (BitVec 8) :=
   (Sail.BitVec.updateSubrange v 1 0 x)
 
-def _set_cr_type_CR3 (r_ref : RegisterRef RegisterType (BitVec 8)) (v : (BitVec 2)) : SailM Unit := do
+def _set_cr_type_CR3 (r_ref : (RegisterRef RegisterType (BitVec 8))) (v : (BitVec 2)) : SailM Unit := do
   let r := (← (reg_deref r_ref))
   writeRegRef r_ref (_update_cr_type_CR3 r v)
 
@@ -69,7 +69,7 @@ def _get_cr_type_GT (v : (BitVec 8)) : (BitVec 1) :=
 def _update_cr_type_GT (v : (BitVec 8)) (x : (BitVec 1)) : (BitVec 8) :=
   (Sail.BitVec.updateSubrange v 6 6 x)
 
-def _set_cr_type_GT (r_ref : RegisterRef RegisterType (BitVec 8)) (v : (BitVec 1)) : SailM Unit := do
+def _set_cr_type_GT (r_ref : (RegisterRef RegisterType (BitVec 8))) (v : (BitVec 1)) : SailM Unit := do
   let r := (← (reg_deref r_ref))
   writeRegRef r_ref (_update_cr_type_GT r v)
 
@@ -79,7 +79,7 @@ def _get_cr_type_LT (v : (BitVec 8)) : (BitVec 1) :=
 def _update_cr_type_LT (v : (BitVec 8)) (x : (BitVec 1)) : (BitVec 8) :=
   (Sail.BitVec.updateSubrange v 7 7 x)
 
-def _set_cr_type_LT (r_ref : RegisterRef RegisterType (BitVec 8)) (v : (BitVec 1)) : SailM Unit := do
+def _set_cr_type_LT (r_ref : (RegisterRef RegisterType (BitVec 8))) (v : (BitVec 1)) : SailM Unit := do
   let r := (← (reg_deref r_ref))
   writeRegRef r_ref (_update_cr_type_LT r v)
 
