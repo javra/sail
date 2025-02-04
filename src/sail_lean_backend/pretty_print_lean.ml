@@ -571,22 +571,27 @@ let string_of_type_def_con (TD_aux (td, _)) =
 let doc_typdef ctx (TD_aux (td, tannot) as full_typdef) =
   match td with
   | TD_enum (Id_aux (Id id, _), fields, _) ->
-      let derivers = if List.length fields > 0 then [string "Inhabited"] else [] in
       let fields = List.map doc_id_ctor fields in
       let fields = List.map (fun i -> space ^^ pipe ^^ space ^^ i) fields in
+      let derivers =
+        if List.length fields == 0 then [string "DecidableEq"] else [string "Inhabited"; string "DecidableEq"]
+      in
       let enums_doc = concat fields in
       nest 2
         (flow (break 1) [string "inductive"; string id; string "where"]
-        ^^ enums_doc ^^ hardline ^^ string "deriving" ^^ space
-        ^^ separate (comma ^^ space) derivers
+        ^^ enums_doc ^^ hardline ^^ string "deriving" ^^ space ^^ separate comma_sp derivers
         )
-      ^^ hardline ^^ string "open " ^^ string id
+      ^^ hardline ^^ hardline ^^ string "open " ^^ string id
   | TD_record (Id_aux (Id id, _), TypQ_aux (tq, _), fields, _) ->
       let fields = List.map (doc_typ_id ctx) fields in
-      let enums_doc = separate hardline fields in
+      let fields_doc = separate hardline fields in
       let rectyp = doc_typ_quant ctx tq in
       (* TODO don't ignore type quantifiers *)
-      nest 2 (flow (break 1) [string "structure"; string id; string "where"] ^^ hardline ^^ enums_doc)
+      nest 2
+        (flow (break 1) [string "structure"; string id; string "where"]
+        ^^ hardline ^^ fields_doc ^^ hardline ^^ string "deriving" ^^ space
+        ^^ nest 2 (flow comma_sp [string "Inhabited"; string "DecidableEq"])
+        )
   | TD_abbrev (Id_aux (Id id, _), tq, A_aux (A_typ t, _)) ->
       nest 2 (flow (break 1) [string "abbrev"; string id; coloneq; doc_typ ctx t])
   | TD_abbrev (Id_aux (Id id, _), tq, A_aux (A_nexp ne, _)) ->
