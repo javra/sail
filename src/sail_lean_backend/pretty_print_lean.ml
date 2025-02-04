@@ -369,6 +369,14 @@ let wrap_with_pure (needs_return : bool) (d : document) =
 let wrap_with_left_arrow (needs_return : bool) (d : document) =
   if needs_return then parens (nest 2 (flow space [string "←"; d])) else d
 
+let get_fn_implicits (Typ_aux (t, _)) : bool list =
+  let arg_implicit arg =
+    match arg with
+    | Typ_aux (Typ_app (Id_aux (Id "implicit", _), [A_aux (A_nexp (Nexp_aux (Nexp_var ki, _)), _)]), _) -> true
+    | _ -> false
+  in
+  match t with Typ_fn (args, cod) -> List.map arg_implicit args | _ -> []
+
 let rec doc_match_clause (as_monadic : bool) ctx (Pat_aux (cl, l)) =
   match cl with
   | Pat_exp (pat, branch) -> string "| " ^^ doc_pat pat ^^ string " =>" ^^ space ^^ doc_exp as_monadic ctx branch
@@ -417,11 +425,14 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
       in
       nest 2 (e0_pp ^^ e1_pp) ^^ hardline ^^ e2_pp
   | E_app (f, args) ->
+      let _, f_typ = Env.get_val_spec f env in
+      let implicits = get_fn_implicits f_typ in
       let d_id =
         if Env.is_extern f env "lean" then string (Env.get_extern f env "lean")
         else doc_exp false ctx (E_aux (E_id f, (l, annot)))
       in
       let d_args = List.map d_of_arg args in
+      let d_args = List.map snd (List.filter (fun x -> not (fst x)) (List.combine implicits d_args)) in
       let fn_monadic = not (Effects.function_is_pure f ctx.global.effect_info) in
       nest 2
         (wrap_with_left_arrow ((not as_monadic) && fn_monadic)
