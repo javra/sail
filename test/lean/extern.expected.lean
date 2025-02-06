@@ -2,7 +2,7 @@ import Out.Sail.Sail
 
 open Sail
 
-abbrev SailM := StateM Unit
+abbrev SailM := PreSailM (fun (x : PEmpty.{1}) => nomatch x)
 
 def extern_add (lit : Unit) : Int :=
   (Int.add 5 4)

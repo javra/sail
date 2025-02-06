@@ -26,7 +26,7 @@ inductive my_option (k_a : Type) where
 
 open my_option
 
-abbrev SailM := StateM Unit
+abbrev SailM := PreSailM (fun (x : PEmpty.{1}) => nomatch x)
 
 def undefined_rectangle (lit : Unit) : SailM rectangle := do
   (pure { width := sorry

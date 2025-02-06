@@ -19,7 +19,7 @@ structure Mem_write_request
   value : (Option (BitVec (8 * k_n)))
   tag : (Option Bool)
 
-abbrev SailM := StateM Unit
+abbrev SailM := PreSailM (fun (x : PEmpty.{1}) => nomatch x)
 
 def undefined_My_struct (lit : Unit) : SailM My_struct := do
   (pure { field1 := sorry

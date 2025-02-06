@@ -8,7 +8,7 @@ abbrev xlen_bytes : Int := 8
 
 abbrev xlenbits := (BitVec 64)
 
-abbrev SailM := StateM Unit
+abbrev SailM := PreSailM (fun (x : PEmpty.{1}) => nomatch x)
 
 /-- Type quantifiers: k_n : Int, m : Int, m ≥ k_n -/
 def EXTZ {m : _} (v : (BitVec k_n)) : (BitVec m) :=

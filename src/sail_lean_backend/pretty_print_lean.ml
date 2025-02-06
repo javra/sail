@@ -733,7 +733,9 @@ let doc_reg_info env global registers =
     [register_enums registers; type_enum ctx registers; string "open RegisterRef"; inhabit_enum ctx type_map; empty]
 
 let doc_monad_abbrev (has_registers : bool) =
-  let pp_register_type = if has_registers then string "PreSailM RegisterType" else string "StateM Unit" in
+  let pp_register_type =
+    if has_registers then string "PreSailM RegisterType" else string "PreSailM (fun (x : PEmpty.{1}) => nomatch x)"
+  in
   separate space [string "abbrev"; string "SailM"; coloneq; pp_register_type] ^^ hardline ^^ hardline
 
 let pp_ast_lean (env : Type_check.env) effect_info ({ defs; _ } as ast : Libsail.Type_check.typed_ast) o =
