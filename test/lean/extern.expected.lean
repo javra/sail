@@ -2,7 +2,7 @@ import Out.Sail.Sail
 
 open Sail
 
-abbrev SailM := PreSailM (fun (x : PEmpty.{1}) => nomatch x)
+abbrev SailM := PreSailM PEmpty.elim trivialChoiceSource
 
 def extern_add (lit : Unit) : Int :=
   (Int.add 5 4)
