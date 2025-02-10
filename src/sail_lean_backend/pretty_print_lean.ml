@@ -427,8 +427,7 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
       if Env.is_register id env then wrap_with_left_arrow (not as_monadic) (string "readReg " ^^ doc_id_ctor id)
       else wrap_with_pure as_monadic (doc_id_ctor id)
   | E_lit l -> wrap_with_pure as_monadic (doc_lit l)
-  | E_app (Id_aux (Id "None", _), _) ->
-      string "none"
+  | E_app (Id_aux (Id "None", _), _) -> string "none"
   | E_app (Id_aux (Id "Some", _), args) ->
       let d_id = string "some" in
       let d_args = List.map d_of_arg args in
@@ -470,8 +469,8 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
   | E_let (LB_aux (LB_val (lpat, lexp), _), e) ->
       let id_typ =
         match pat_is_plain_binder env lpat with
-        | Some (Some (Id_aux (Id id, _)), Some typ) -> string id ^^ space ^^ colon ^^ space ^^ doc_typ ctx typ
-        | Some (Some (Id_aux (Id id, _)), None) -> string id
+        | Some (Some (Id_aux (Id id, _)), Some typ) -> string (fix_id id) ^^ space ^^ colon ^^ space ^^ doc_typ ctx typ
+        | Some (Some (Id_aux (Id id, _)), None) -> string (fix_id id)
         | Some (None, _) -> string "x" (* TODO fresh name or wildcard instead of x *)
         | _ -> failwith "Let pattern not translatable yet."
       in
@@ -511,6 +510,7 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
   | E_ref id -> string "Reg " ^^ doc_id_ctor id
   | E_exit _ -> string "throw Error.Exit"
   | E_assert (e1, e2) -> string "assert " ^^ d_of_arg e1 ^^ space ^^ d_of_arg e2
+  | E_list es -> brackets (separate_map comma_sp (doc_exp as_monadic ctx) es)
   | _ -> failwith ("Expression " ^ string_of_exp_con full_exp ^ " " ^ string_of_exp full_exp ^ " not translatable yet.")
 
 and doc_fexp with_arrow ctx (FE_aux (FE_fexp (field, e), _)) = doc_id_ctor field ^^ string " := " ^^ doc_exp false ctx e
@@ -728,7 +728,7 @@ let doc_reg_info env global registers =
 let doc_monad_abbrev (has_registers : bool) =
   let pp_register_type =
     if has_registers then string "PreSailM RegisterType trivialChoiceSource"
-    else string "PreSailM (fun x : PEmpty.{1} => nomatch x) trivialChoiceSource"
+    else string "PreSailM PEmpty.elim trivialChoiceSource"
   in
   separate space [string "abbrev"; string "SailM"; coloneq; pp_register_type] ^^ hardline ^^ hardline
 

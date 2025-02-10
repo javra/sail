@@ -2,7 +2,7 @@ import Out.Sail.Sail
 
 open Sail
 
-abbrev SailM := PreSailM (fun x : PEmpty.{0} => nomatch x) trivialChoiceSource
+abbrev SailM := PreSailM PEmpty.elim trivialChoiceSource
 
 /-- Type quantifiers: n : Int -/
 def foo (n : Int) : SailM (Bool × (BitVec 1) × Int × Nat × (BitVec 3)) := do
