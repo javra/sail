@@ -427,15 +427,8 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
       if Env.is_register id env then wrap_with_left_arrow (not as_monadic) (string "readReg " ^^ doc_id_ctor id)
       else wrap_with_pure as_monadic (doc_id_ctor id)
   | E_lit l -> wrap_with_pure as_monadic (doc_lit l)
-  | E_app (Id_aux (Id "undefined_int", _), _) (* TODO remove when we handle imports *)
-  | E_app (Id_aux (Id "undefined_bit", _), _) (* TODO remove when we handle imports *)
-  | E_app (Id_aux (Id "undefined_bitvector", _), _) (* TODO remove when we handle imports *)
-  | E_app (Id_aux (Id "undefined_bool", _), _) (* TODO remove when we handle imports *)
-  | E_app (Id_aux (Id "undefined_nat", _), _) (* TODO remove when we handle imports *)
-  | E_app (Id_aux (Id "internal_pick", _), _) ->
-      (* TODO replace by actual implementation of internal_pick *)
-      string "sorry"
-  | E_app (Id_aux (Id "None", _), _) -> string "none"
+  | E_app (Id_aux (Id "None", _), _) ->
+      string "none"
   | E_app (Id_aux (Id "Some", _), args) ->
       let d_id = string "some" in
       let d_args = List.map d_of_arg args in
@@ -734,7 +727,8 @@ let doc_reg_info env global registers =
 
 let doc_monad_abbrev (has_registers : bool) =
   let pp_register_type =
-    if has_registers then string "PreSailM RegisterType" else string "PreSailM (fun (x : PEmpty.{1}) => nomatch x)"
+    if has_registers then string "PreSailM RegisterType trivialChoiceSource"
+    else string "PreSailM (fun x : PEmpty.{1} => nomatch x) trivialChoiceSource"
   in
   separate space [string "abbrev"; string "SailM"; coloneq; pp_register_type] ^^ hardline ^^ hardline
 
