@@ -7,7 +7,7 @@ inductive E where | A | B | C
 
 open E
 
-abbrev SailM := StateM Unit
+abbrev SailM := PreSailM (fun (x : PEmpty.{1}) => nomatch x)
 
 def undefined_E (lit : Unit) : SailM E := do
   sorry

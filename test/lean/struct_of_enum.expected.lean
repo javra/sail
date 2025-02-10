@@ -11,7 +11,7 @@ open e_test
 structure s_test where
   f : e_test
 
-abbrev SailM := StateM Unit
+abbrev SailM := PreSailM (fun (x : PEmpty.{1}) => nomatch x)
 
 def undefined_e_test (lit : Unit) : SailM e_test := do
   sorry
