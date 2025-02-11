@@ -147,4 +147,10 @@ def addInt {w : Nat} (x : BitVec w) (i : Int) : BitVec w :=
   x + BitVec.ofInt w i
 
 end BitVec
+
+namespace Int
+
+def intAbs (x : Int) : Int := Int.ofNat (Int.natAbs x)
+
+end Int
 end Sail
