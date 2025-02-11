@@ -85,7 +85,7 @@ def undefined_bitvector (n : Nat) : PreSailM RegisterType c (BitVec n) :=
 def internal_pick {α : Type} : List α → PreSailM RegisterType c α
   | [] => .error .Unreachable
   | (a :: as) => do
-    let idx ← choose <| Primitive.fin (as.length)
+    let idx ← choose <| .fin (as.length)
     pure <| (a :: as).get idx
 
 def writeReg (r : Register) (v : RegisterType r) : PreSailM RegisterType c PUnit :=
@@ -107,6 +107,8 @@ def reg_deref (reg_ref : @RegisterRef Register RegisterType α) : PreSailM Regis
   readRegRef reg_ref
 
 def vectorAccess [Inhabited α] (v : Vector α m) (n : Nat) := v[n]!
+
+def vectorUpdate (v : Vector α m) (n : Nat) (a : α) := v.set! n a
 
 def assert (p : Bool) (s : String) : PreSailM RegisterType c Unit :=
   if p then pure () else throw (Assertion s)

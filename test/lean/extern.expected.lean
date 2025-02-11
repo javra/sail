@@ -77,6 +77,9 @@ def extern_gt_int (_ : Unit) : Bool :=
 def extern_eq_anything (_ : Unit) : Bool :=
   (BEq.beq true true)
 
+def extern_vector_update (_ : Unit) : (Vector Int 5) :=
+  (vectorUpdate #v[23, 23, 23, 23, 23] 2 42)
+
 def initialize_registers (_ : Unit) : Unit :=
   ()
 
