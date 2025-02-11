@@ -205,6 +205,7 @@ val bitvector_update = pure {
   interpreter: "update",
   lem: "update_vec_dec",
   coq: "update_vec_dec",
+  lean: "vectorUpdate",
   _: "vector_update"
 } : forall 'n 'm, 0 <= 'm < 'n. (bits('n), int('m), bit) -> bits('n)
 $else
@@ -222,6 +223,7 @@ val plain_vector_update = pure {
   interpreter: "update",
   lem: "update_list_dec",
   coq: "vec_update_dec",
+  lean: "vectorUpdate",
   _: "vector_update"
 } : forall 'n 'm ('a : Type), 0 <= 'm < 'n. (vector('n, dec, 'a), int('m), 'a) -> vector('n, dec, 'a)
 
