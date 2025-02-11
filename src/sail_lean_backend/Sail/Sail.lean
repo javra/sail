@@ -140,6 +140,8 @@ def updateSubrange' {w : Nat} (x : BitVec w) (start len : Nat) (y : BitVec len) 
 def updateSubrange {w : Nat} (x : BitVec w) (hi lo : Nat) (y : BitVec (hi - lo + 1)) : BitVec w :=
   updateSubrange' x lo _ y
 
+def replicateBits {w : Nat} (x : BitVec w) (i : Nat) := BitVec.replicate i x
+
 def access {w : Nat} (x : BitVec w) (i : Nat) : BitVec 1 :=
   BitVec.ofBool x[i]!
 

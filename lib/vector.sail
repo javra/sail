@@ -365,7 +365,9 @@ val slice = pure "slice_inc" : forall 'n 'm 'o, 0 <= 'o < 'm & 'o + 'n <= 'm.
   (bits('m), int('o), int('n)) -> bits('n)
 $endif
 
-val replicate_bits = pure "replicate_bits" : forall 'n 'm, 'm >= 0. (bits('n), int('m)) -> bits('n * 'm)
+val replicate_bits = pure {
+  lean: "BitVec.replicateBits",
+  _: "replicate_bits" } : forall 'n 'm, 'm >= 0. (bits('n), int('m)) -> bits('n * 'm)
 
 val slice_mask : forall 'n, 'n >= 0. (implicit('n), int, int) -> bits('n)
 function slice_mask(n,i,l) =
