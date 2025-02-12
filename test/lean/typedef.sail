@@ -11,3 +11,5 @@ function EXTZ(m, v) = sail_zero_extend(v, m)
 val EXTS : forall 'n 'm, 'm >= 'n. (implicit('m), bits('n)) -> bits('m)
 function EXTS(m, v) = sail_sign_extend(v, m)
 
+type bits2('n) = bitvector('n)
+

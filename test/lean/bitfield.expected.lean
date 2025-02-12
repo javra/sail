@@ -2,7 +2,7 @@ import Out.Sail.Sail
 
 open Sail
 
-abbrev cr_type := (BitVec 8)
+/- Type abbreviation omitted: cr_type -/
 
 inductive Register : Type where
   | R

@@ -618,8 +618,7 @@ let doc_typdef ctx (TD_aux (td, tannot) as full_typdef) =
         | _ -> [string "structure"; string id; separate space rectyp; string "where"]
       in
       doc_typ_quant_in_comment ctx tq ^^ hardline ^^ nest 2 (flow (break 1) decl_start ^^ hardline ^^ fields_doc)
-  | TD_abbrev (Id_aux (Id id, _), tq, A_aux (A_typ t, _)) ->
-      nest 2 (flow (break 1) [string "abbrev"; string id; coloneq; doc_typ ctx t])
+  | TD_abbrev (id, tq, A_aux (A_typ t, _)) -> string "/- Type abbreviation omitted: " ^^ doc_id_ctor id ^^ string " -/"
   | TD_abbrev (Id_aux (Id id, _), tq, A_aux (A_nexp ne, _)) ->
       nest 2 (flow (break 1) [string "abbrev"; string id; colon; string "Int"; coloneq; doc_nexp ctx ne])
   | TD_variant (Id_aux (Id id, _), tq, ar, _) ->

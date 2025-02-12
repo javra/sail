@@ -6,7 +6,9 @@ abbrev xlen : Int := 64
 
 abbrev xlen_bytes : Int := 8
 
-abbrev xlenbits := (BitVec 64)
+/- Type abbreviation omitted: xlenbits -/
+
+/- Type abbreviation omitted: bits2 -/
 
 abbrev SailM := PreSailM PEmpty.elim trivialChoiceSource
 

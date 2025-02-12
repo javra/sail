@@ -2,7 +2,7 @@ import Out.Sail.Sail
 
 open Sail
 
-abbrev reg_index := Nat
+/- Type abbreviation omitted: reg_index -/
 
 inductive Register : Type where
   | R0
