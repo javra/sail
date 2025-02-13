@@ -9,6 +9,9 @@ open Rewriter
 open PPrint
 open Pretty_print_common
 
+(* Command line options *)
+let opt_extern_types : string list ref = ref []
+
 type global_context = { effect_info : Effects.side_effect_info }
 
 let the_main_function_has_been_seen = ref false
@@ -365,6 +368,27 @@ let string_of_pat_con (P_aux (p, _)) =
   | P_string_append _ -> "P_string_append"
   | P_struct _ -> "P_struct"
 
+let string_of_def (DEF_aux (d, _)) =
+  match d with
+  | DEF_type _ -> "DEF_type"
+  | DEF_constraint _ -> "DEF_constraint"
+  | DEF_fundef _ -> "DEF_fundef"
+  | DEF_mapdef _ -> "DEF_mapdef"
+  | DEF_impl _ -> "DEF_impl"
+  | DEF_let _ -> "DEF_let"
+  | DEF_val (VS_aux (VS_val_spec (_, id, _), _)) -> "DEF_val " ^ string_of_id id
+  | DEF_outcome _ -> "DEF_outcome"
+  | DEF_instantiation _ -> "DEF_instantiation"
+  | DEF_fixity _ -> "DEF_fixity"
+  | DEF_overload _ -> "DEF_overload"
+  | DEF_default _ -> "DEF_default"
+  | DEF_scattered _ -> "DEF_scattered"
+  | DEF_measure _ -> "DEF_measure"
+  | DEF_loop_measures _ -> "DEF_loop_measures"
+  | DEF_register _ -> "DEF_register"
+  | DEF_internal_mutrec _ -> "DEF_internal_mutrec"
+  | DEF_pragma _ -> "DEF_pragma"
+
 (** Fix identifiers to match the standard Lean library. *)
 let fixup_match_id (Id_aux (id, l) as id') =
   match id with Id id -> Id_aux (Id (match id with "Some" -> "some" | "None" -> "none" | _ -> id), l) | _ -> id'
@@ -496,7 +520,11 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
       else wrap_with_pure as_monadic (parens (separate space [doc_exp false ctx e; colon; doc_typ ctx typ]))
   | E_tuple es -> wrap_with_pure as_monadic (parens (separate_map (comma ^^ space) d_of_arg es))
   | E_let (LB_aux (LB_val (lpat, lexp), _), e) ->
-      let id_typ = doc_pat lpat in
+      let id_typ =
+        match pat_is_plain_binder env lpat with
+        | Some (_, Some typ) -> doc_pat lpat ^^ space ^^ colon ^^ space ^^ doc_typ ctx typ
+        | _ -> doc_pat lpat
+      in
       let decl_val =
         if effectful (effect_of lexp) then [string "←"; string "do"; doc_exp true ctx lexp]
         else [coloneq; doc_exp false ctx lexp]
@@ -516,9 +544,7 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
         (braces (space ^^ doc_exp false ctx exp ^^ string " with " ^^ separate (comma ^^ space) args ^^ space))
   | E_match (discr, brs) ->
       let cases = separate_map hardline (doc_match_clause as_monadic ctx) brs in
-      string (match_or_match_bv brs)
-      ^^ doc_exp (effectful (effect_of discr)) ctx discr
-      ^^ string " with" ^^ hardline ^^ cases
+      string (match_or_match_bv brs) ^^ doc_exp false ctx discr ^^ string " with" ^^ hardline ^^ cases
   | E_assign ((LE_aux (le_act, tannot) as le), e) -> (
       match le_act with
       | LE_id id | LE_typ (_, id) -> string "writeReg " ^^ doc_id_ctor id ^^ space ^^ doc_exp false ctx e
@@ -695,6 +721,8 @@ let rec doc_defs_rec ctx defs types docdefs =
   | [] -> (types, docdefs)
   | DEF_aux (DEF_fundef fdef, _) :: defs' ->
       doc_defs_rec ctx defs' types (docdefs ^^ group (doc_fundef ctx fdef) ^/^ hardline)
+  | DEF_aux (DEF_type tdef, _) :: defs' when List.mem (string_of_id (id_of_type_def tdef)) !opt_extern_types ->
+      doc_defs_rec ctx defs' types docdefs
   | DEF_aux (DEF_type tdef, _) :: defs' ->
       doc_defs_rec ctx defs' (types ^^ group (doc_typdef ctx tdef) ^/^ hardline) docdefs
   | DEF_aux (DEF_let (LB_aux (LB_val (pat, exp), _)), _) :: defs' ->
@@ -757,6 +785,28 @@ let doc_monad_abbrev (has_registers : bool) =
   in
   separate space [string "abbrev"; string "SailM"; coloneq; pp_register_type] ^^ hardline ^^ hardline
 
+let doc_instantiations ctx env =
+  let params = Monad_params.find_monad_parameters env in
+  match params with
+  | None -> empty
+  | Some params ->
+      nest 2
+        (separate hardline
+           [
+             string "instance : Arch where";
+             string "va_size := 64";
+             string "pa := " ^^ doc_typ ctx params.pa_type;
+             string "abort := " ^^ doc_typ ctx params.abort_type;
+             string "translation := " ^^ doc_typ ctx params.translation_summary_type;
+             string "fault := " ^^ doc_typ ctx params.fault_type;
+             string "tlb_op := " ^^ doc_typ ctx params.tlbi_type;
+             string "cache_op := " ^^ doc_typ ctx params.cache_op_type;
+             string "barrier := " ^^ doc_typ ctx params.barrier_type;
+             string "arch_ak := " ^^ doc_typ ctx params.arch_ak_type;
+             string "sys_reg_id := " ^^ doc_typ ctx params.sys_reg_id_type ^^ hardline;
+           ]
+        )
+      ^^ hardline
 let main_function_stub =
   nest 2
     (separate hardline
@@ -769,13 +819,16 @@ let main_function_stub =
     )
 
 let pp_ast_lean (env : Type_check.env) effect_info ({ defs; _ } as ast : Libsail.Type_check.typed_ast) o =
+  (* TODO: remove the following line once we can handle the includes *)
   let defs = remove_imports defs 0 in
   let regs = State.find_registers defs in
   let global = { effect_info } in
+  let ctx = initial_context env global in
   let has_registers = List.length regs > 0 in
   let register_refs = if has_registers then doc_reg_info env global regs else empty in
   let monad = doc_monad_abbrev has_registers in
-  let types, fundefs = doc_defs (initial_context env global) defs in
+  let instantiations = doc_instantiations ctx env in
+  let types, fundefs = doc_defs ctx defs in
   let main_function = if !the_main_function_has_been_seen then main_function_stub else empty in
-  print o (types ^^ register_refs ^^ monad ^^ fundefs ^^ main_function);
+  print o (types ^^ register_refs ^^ monad ^^ instantiations ^^ fundefs ^^ main_function);
   !the_main_function_has_been_seen
