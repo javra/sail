@@ -143,6 +143,8 @@ let string_of_typ_con (Typ_aux (t, _)) =
 
 let doc_big_int i = if i >= Z.zero then string (Big_int.to_string i) else parens (string (Big_int.to_string i))
 
+let is_unit t = match t with Typ_aux (Typ_id (Id_aux (Id "unit", _)), _) -> true | _ -> false
+
 (* Adapted from Coq PP *)
 let rec doc_nexp ctx (Nexp_aux (n, l) as nexp) =
   let rec plussub (Nexp_aux (n, l) as nexp) =
@@ -348,6 +350,14 @@ let string_of_exp_con (E_aux (e, _)) =
   | E_vector _ -> "E_vector"
   | E_let _ -> "E_let"
 
+let rec is_anonymous_pat (P_aux (p, _) as full_pat) =
+  match p with
+  | P_wild -> true
+  | P_id (Id_aux (Id s, _)) -> String.sub s 0 1 = "_"
+  | P_lit (L_aux _) -> true
+  | P_typ (_, p) -> is_anonymous_pat p
+  | _ -> false
+
 let string_of_pat_con (P_aux (p, _)) =
   match p with
   | P_app _ -> "P_app"
@@ -485,19 +495,6 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
       let d_id = string "some" in
       let d_args = List.map d_of_arg args in
       nest 2 (parens (flow (break 1) (d_id :: d_args)))
-  | E_internal_plet (pat, e1, e2) ->
-      let e0 = doc_pat pat in
-      let e1_pp = doc_exp false ctx e1 in
-      let e2' = rebind_cast_pattern_vars pat (typ_of e1) e2 in
-      let e2_pp = doc_exp as_monadic ctx e2' in
-      let e0_pp =
-        begin
-          match pat with
-          | P_aux (P_typ (_, P_aux (P_wild, _)), _) -> string ""
-          | _ -> flow (break 1) [string "let"; e0; string ":="] ^^ space
-        end
-      in
-      nest 2 (e0_pp ^^ e1_pp) ^^ hardline ^^ e2_pp
   | E_app (f, args) ->
       let _, f_typ = Env.get_val_spec f env in
       let implicits = get_fn_implicits f_typ in
@@ -519,17 +516,19 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
         parens (separate space [doc_exp as_monadic ctx e; colon; string "SailM"; doc_typ ctx typ])
       else wrap_with_pure as_monadic (parens (separate space [doc_exp false ctx e; colon; doc_typ ctx typ]))
   | E_tuple es -> wrap_with_pure as_monadic (parens (separate_map (comma ^^ space) d_of_arg es))
-  | E_let (LB_aux (LB_val (lpat, lexp), _), e) ->
+  | E_internal_plet (lpat, lexp, e) | E_let (LB_aux (LB_val (lpat, lexp), _), e) ->
       let id_typ =
         match pat_is_plain_binder env lpat with
         | Some (_, Some typ) -> doc_pat lpat ^^ space ^^ colon ^^ space ^^ doc_typ ctx typ
         | _ -> doc_pat lpat
       in
-      let decl_val =
-        if effectful (effect_of lexp) then [string "←"; string "do"; doc_exp true ctx lexp]
-        else [coloneq; doc_exp false ctx lexp]
+      let pp_let_line =
+        if effectful (effect_of lexp) then
+          if is_unit (typ_of lexp) && is_anonymous_pat lpat then [doc_exp true ctx lexp]
+          else [separate space [string "let"; id_typ; string "←"]; doc_exp true ctx lexp]
+        else [separate space [string "let"; id_typ; coloneq]; doc_exp false ctx lexp]
       in
-      nest 2 (flow (break 1) ([string "let"; id_typ] @ decl_val)) ^^ hardline ^^ doc_exp as_monadic ctx e
+      group (nest 2 (flow (break 1) pp_let_line)) ^^ hardline ^^ doc_exp as_monadic ctx e
   | E_internal_return e -> doc_exp false ctx e (* ??? *)
   | E_struct fexps ->
       let args = List.map d_of_field fexps in
