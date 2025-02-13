@@ -54,7 +54,7 @@ def extern_min (_ : Unit) : Int :=
   (Min.min 5 4)
 
 def extern_abs_int_plain (_ : Unit) : Int :=
-  let x := (-5)
+  let x : Int := (-5)
   (Sail.Int.intAbs x)
 
 def extern_eq_unit (_ : Unit) : Bool :=

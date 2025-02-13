@@ -517,14 +517,18 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
       else wrap_with_pure as_monadic (parens (separate space [doc_exp false ctx e; colon; doc_typ ctx typ]))
   | E_tuple es -> wrap_with_pure as_monadic (parens (separate_map (comma ^^ space) d_of_arg es))
   | E_internal_plet (lpat, lexp, e) | E_let (LB_aux (LB_val (lpat, lexp), _), e) ->
-      let id_typ = doc_pat lpat in
+      let id_typ =
+        match pat_is_plain_binder env lpat with
+        | Some (_, Some typ) -> doc_pat lpat ^^ space ^^ colon ^^ space ^^ doc_typ ctx typ
+        | _ -> doc_pat lpat
+      in
       let pp_let_line =
         if effectful (effect_of lexp) then
           if is_unit (typ_of lexp) && is_anonymous_pat lpat then [doc_exp true ctx lexp]
-          else [string "let"; id_typ; string "←"; doc_exp true ctx lexp]
-        else [string "let"; id_typ; coloneq; doc_exp false ctx lexp]
+          else [separate space [string "let"; id_typ; string "←"]; doc_exp true ctx lexp]
+        else [separate space [string "let"; id_typ; coloneq]; doc_exp false ctx lexp]
       in
-      nest 2 (flow space pp_let_line) ^^ hardline ^^ doc_exp as_monadic ctx e
+      group (nest 2 (flow (break 1) pp_let_line)) ^^ hardline ^^ doc_exp as_monadic ctx e
   | E_internal_return e -> doc_exp false ctx e (* ??? *)
   | E_struct fexps ->
       let args = List.map d_of_field fexps in
