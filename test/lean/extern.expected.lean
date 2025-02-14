@@ -3,7 +3,72 @@ import Out.Sail.BitVec
 
 open Sail
 
+abbrev bits k_n := (BitVec k_n)
+
+/-- Type quantifiers: k_a : Type -/
+
+inductive option (k_a : Type) where
+  | Some (_ : k_a)
+  | None (_ : Unit)
+
+open option
+
 abbrev SailM := PreSailM PEmpty.elim trivialChoiceSource
+
+def spc_forwards (_ : Unit) : String :=
+  " "
+
+def spc_forwards_matches (_ : Unit) : Bool :=
+  true
+
+def spc_backwards (x : String) : Unit :=
+  ()
+
+def spc_backwards_matches (s : String) : Bool :=
+  let len := (String.length s)
+  (Bool.and (Eq (String.leadingSpaces s) len) (GT.gt len 0))
+
+def opt_spc_forwards (_ : Unit) : String :=
+  ""
+
+def opt_spc_forwards_matches (_ : Unit) : Bool :=
+  true
+
+def opt_spc_backwards (x : String) : Unit :=
+  ()
+
+def opt_spc_backwards_matches (s : String) : Bool :=
+  (Eq (String.leadingSpaces s) (String.length s))
+
+def def_spc_forwards (_ : Unit) : String :=
+  " "
+
+def def_spc_forwards_matches (_ : Unit) : Bool :=
+  true
+
+def def_spc_backwards (x : String) : Unit :=
+  ()
+
+def def_spc_backwards_matches (s : String) : Bool :=
+  (Eq (String.leadingSpaces s) (String.length s))
+
+def sep_forwards (arg_ : Unit) : String :=
+  match arg_ with
+  | () =>
+    (String.append (opt_spc_forwards ())
+      (String.append "," (String.append (def_spc_forwards ()) "")))
+
+def sep_backwards (arg_ : String) : SailM Unit := do
+  match arg_ with
+  | _ => throw Error.Exit
+
+def sep_forwards_matches (arg_ : Unit) : Bool :=
+  match arg_ with
+  | () => true
+
+def sep_backwards_matches (arg_ : String) : SailM Bool := do
+  match arg_ with
+  | _ => throw Error.Exit
 
 def extern_add (_ : Unit) : Int :=
   (HAdd.hAdd 5 4)
@@ -113,6 +178,15 @@ def extern_string_append (_ : Unit) : String :=
 
 def extern_string_startswith (_ : Unit) : Bool :=
   (String.startsWith "Hello, world" "Hello")
+
+def extern_eq_string (_ : Unit) : Bool :=
+  (Eq "Hello" "world")
+
+def extern_concat_str (_ : Unit) : String :=
+  (HAppend.hAppend "Hello, " "world")
+
+def extern_n_leading_spaces (_ : Unit) : Nat :=
+  (String.leadingSpaces "   Belated Hello world!")
 
 def initialize_registers (_ : Unit) : Unit :=
   ()

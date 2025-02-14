@@ -80,7 +80,7 @@ val string_startswith = pure {
   _: "string_startswith"
 }: (string, string) -> bool
 
-val n_leading_spaces = pure { coq: "n_leading_spaces_Z" } : string -> nat
+val n_leading_spaces = pure { coq: "n_leading_spaces_Z", lean: "String.leadingSpaces" } : string -> nat
 function n_leading_spaces s =
   match s {
     "" => 0,

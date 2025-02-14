@@ -156,3 +156,16 @@ function extern_string_append() -> string = {
 function extern_string_startswith() -> bool = {
   return string_startswith("Hello, world", "Hello")
 }
+
+function extern_eq_string() -> bool = {
+  return eq_string("Hello", "world")
+}
+
+function extern_concat_str() -> string = {
+  return concat_str("Hello, ", "world")
+}
+
+function extern_n_leading_spaces() -> nat = {
+  return n_leading_spaces("   Belated Hello world!")
+}
+

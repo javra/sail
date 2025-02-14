@@ -236,9 +236,11 @@ and doc_typ ctx (Typ_aux (t, _) as typ) =
       underscore (* TODO check if the type of implicit arguments can really be always inferred *)
   | Typ_app (Id_aux (Id "option", _), [A_aux (A_typ typ, _)]) -> parens (string "Option " ^^ doc_typ ctx typ)
   | Typ_tuple ts -> parens (separate_map (space ^^ string "×" ^^ space) (doc_typ ctx) ts)
-  | Typ_id (Id_aux (Id id, _)) -> string id
+  | Typ_id id -> doc_id_ctor id
   | Typ_app (Id_aux (Id "range", _), [A_aux (A_nexp low, _); A_aux (A_nexp high, _)]) ->
       if provably_nneg ctx low then string "Nat" else string "Int"
+  | Typ_app (Id_aux (Id "result", _), [A_aux (A_typ typ1, _); A_aux (A_typ typ2, _)]) ->
+      parens (separate space [string "Result"; doc_typ ctx typ1; doc_typ ctx typ2])
   | Typ_var kid -> doc_kid ctx kid
   | Typ_app (id, args) -> doc_id_ctor id ^^ space ^^ separate_map space (doc_typ_arg ctx `Only_relevant) args
   | Typ_exist (_, _, typ) -> doc_typ ctx typ
@@ -712,7 +714,7 @@ let doc_funcl ctx funcl =
   let comment, signature, ctx, fixup_binders = doc_funcl_init ctx.global funcl in
   comment ^^ nest 2 (signature ^^ hardline ^^ doc_funcl_body fixup_binders ctx funcl)
 
-let doc_fundef ctx (FD_aux (FD_function (r, typa, fcls), fannot)) =
+let doc_fundef ctx (FD_aux (FD_function (r, typa, fcls), fannot) as full_fundef) =
   match fcls with
   | [] -> failwith "FD_function with empty function list"
   | [funcl] -> doc_funcl ctx funcl
@@ -797,8 +799,14 @@ let doc_val ctx pat exp =
 let rec doc_defs_rec ctx defs types docdefs =
   match defs with
   | [] -> (types, docdefs)
-  | DEF_aux (DEF_fundef fdef, _) :: defs' ->
-      doc_defs_rec ctx defs' types (docdefs ^^ group (doc_fundef ctx fdef) ^/^ hardline)
+  | DEF_aux (DEF_fundef fdef, dannot) :: defs' ->
+      let env = dannot.env in
+      let pp_f =
+        if Env.is_extern (id_of_fundef fdef) env "lean" then empty
+        else docdefs ^^ group (doc_fundef ctx fdef) ^/^ hardline
+      in
+
+      doc_defs_rec ctx defs' types pp_f
   | DEF_aux (DEF_type tdef, _) :: defs' when List.mem (string_of_id (id_of_type_def tdef)) !opt_extern_types ->
       doc_defs_rec ctx defs' types docdefs
   | DEF_aux (DEF_type tdef, _) :: defs' ->
@@ -898,7 +906,7 @@ let main_function_stub =
 
 let pp_ast_lean (env : Type_check.env) effect_info ({ defs; _ } as ast : Libsail.Type_check.typed_ast) o =
   (* TODO: remove the following line once we can handle the includes *)
-  let defs = remove_imports defs 0 in
+  (* let defs = remove_imports defs 0 in *)
   let regs = State.find_registers defs in
   let global = { effect_info } in
   let ctx = context_init env global in
