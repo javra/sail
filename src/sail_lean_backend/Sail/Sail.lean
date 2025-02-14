@@ -346,4 +346,18 @@ def shiftr (a : Int) (n : Int) : Int :=
   | Int.negSucc n => Sail.Nat.iterate (fun x => x * 2) (n+1) a
 
 end Int
+
+def String.leadingSpaces (s : String) : Nat :=
+  s.length - (s.dropWhile (· = ' ')).length
+
+
+instance : HShiftLeft (BitVec w) Int (BitVec w) where
+  hShiftLeft b i :=
+    match i with
+    | .ofNat n => BitVec.shiftLeft b n
+    | .negSucc n => BitVec.ushiftRight b n
+
+instance : HShiftRight (BitVec w) Int (BitVec w) where
+  hShiftRight b i := b <<< (-i)
+
 end Sail

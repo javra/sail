@@ -3,6 +3,16 @@ import Out.Sail.BitVec
 
 open Sail
 
+abbrev bits k_n := (BitVec k_n)
+
+/-- Type quantifiers: k_a : Type -/
+
+inductive option (k_a : Type) where
+  | Some (_ : k_a)
+  | None (_ : Unit)
+
+open option
+
 abbrev MAIRType := (BitVec 64)
 
 abbrev S1PIRType := (BitVec 64)
@@ -495,6 +505,71 @@ instance : Arch where
   barrier := Barrier
   arch_ak := arm_acc_type
   sys_reg_id := Unit
+
+/-- Type quantifiers: x : Int -/
+def __id (x : Int) : Int :=
+  x
+
+/-- Type quantifiers: len : Nat, k_v : Nat, len ≥ 0 ∧ k_v ≥ 0 -/
+def sail_mask (len : Nat) (v : (BitVec k_v)) : (BitVec len) :=
+  if (LE.le len (Sail.BitVec.length v))
+  then (Sail.BitVec.truncate v len)
+  else (Sail.BitVec.zeroExtend v len)
+
+/-- Type quantifiers: n : Nat, n ≥ 0 -/
+def sail_ones (n : Nat) : (BitVec n) :=
+  (Complement.complement (BitVec.zero n))
+
+/-- Type quantifiers: l : Int, i : Int, n : Nat, n ≥ 0 -/
+def slice_mask {n : _} (i : Int) (l : Int) : (BitVec n) :=
+  if (GE.ge l n)
+  then (HShiftLeft.hShiftLeft (sail_ones n) i)
+  else let one : (BitVec n) := (sail_mask n (0b1 : (BitVec 1)))
+       (HShiftLeft.hShiftLeft (HSub.hSub (HShiftLeft.hShiftLeft one l) one) i)
+
+/-- Type quantifiers: n : Int, m : Int -/
+def _shl_int_general (m : Int) (n : Int) : Int :=
+  if (GE.ge n 0)
+  then (Int.shiftl m n)
+  else (Int.shiftr m (Neg.neg n))
+
+/-- Type quantifiers: n : Int, m : Int -/
+def _shr_int_general (m : Int) (n : Int) : Int :=
+  if (GE.ge n 0)
+  then (Int.shiftr m n)
+  else (Int.shiftl m (Neg.neg n))
+
+/-- Type quantifiers: m : Int, n : Int -/
+def fdiv_int (n : Int) (m : Int) : Int :=
+  if (Bool.and (LT.lt n 0) (GT.gt m 0))
+  then (HSub.hSub (Int.tdiv (HAdd.hAdd n 1) m) 1)
+  else if (Bool.and (GT.gt n 0) (LT.lt m 0))
+       then (HSub.hSub (Int.tdiv (HSub.hSub n 1) m) 1)
+       else (Int.tdiv n m)
+
+/-- Type quantifiers: m : Int, n : Int -/
+def fmod_int (n : Int) (m : Int) : Int :=
+  (HSub.hSub n (HMul.hMul m (fdiv_int n m)))
+
+/-- Type quantifiers: k_a : Type -/
+def is_none (opt : (Option k_a)) : Bool :=
+  match opt with
+  | some _ => false
+  | none => true
+
+/-- Type quantifiers: k_a : Type -/
+def is_some (opt : (Option k_a)) : Bool :=
+  match opt with
+  | some _ => true
+  | none => false
+
+/-- Type quantifiers: k_n : Int -/
+def concat_str_bits (str : String) (x : (BitVec k_n)) : String :=
+  (HAppend.hAppend str (BitVec.toHex x))
+
+/-- Type quantifiers: x : Int -/
+def concat_str_dec (str : String) (x : Int) : String :=
+  (HAppend.hAppend str (Int.repr x))
 
 def undefined_MAIRType (_ : Unit) : SailM (BitVec 64) := do
   (undefined_bitvector 64)
@@ -1898,6 +1973,137 @@ def fetch_and_execute (_ : Unit) : SailM Unit := do
   match instr with
   | some instr => (execute instr)
   | none => assert false "Unsupported Encoding"
+
+/-- Type quantifiers: k_a : Type, k_b : Type -/
+def is_ok (r : (Result k_a k_b)) : Bool :=
+  match r with
+  | Ok _ => true
+  | Err _ => false
+
+/-- Type quantifiers: k_a : Type, k_b : Type -/
+def is_err (r : (Result k_a k_b)) : Bool :=
+  match r with
+  | Ok _ => false
+  | Err _ => true
+
+/-- Type quantifiers: k_a : Type, k_b : Type -/
+def ok_option (r : (Result k_a k_b)) : (Option k_a) :=
+  match r with
+  | Ok x => (some x)
+  | Err _ => none
+
+/-- Type quantifiers: k_a : Type, k_b : Type -/
+def err_option (r : (Result k_a k_b)) : (Option k_b) :=
+  match r with
+  | Ok _ => none
+  | Err err => (some err)
+
+/-- Type quantifiers: k_a : Type, k_b : Type -/
+def unwrap_or (r : (Result k_a k_b)) (y : k_a) : k_a :=
+  match r with
+  | Ok x => x
+  | Err _ => y
+
+/-- Type quantifiers: k_n : Nat, k_n > 0 -/
+def sail_instr_announce (x : (BitVec k_n)) : Unit :=
+  ()
+
+/-- Type quantifiers: x : Nat, x ∈ {32, 64} -/
+def sail_branch_announce (x : Nat) (x : (BitVec x)) : Unit :=
+  ()
+
+def sail_reset_registers (_ : Unit) : Unit :=
+  ()
+
+def sail_synchronize_registers (_ : Unit) : Unit :=
+  ()
+
+/-- Type quantifiers: k_a : Type -/
+def sail_mark_register (x : (RegisterRef RegisterType k_a)) (x : String) : Unit :=
+  ()
+
+/-- Type quantifiers: k_a : Type, k_b : Type -/
+def sail_mark_register_pair (x : (RegisterRef RegisterType k_a)) (x : (RegisterRef RegisterType k_b)) (x : String) : Unit :=
+  ()
+
+/-- Type quantifiers: k_a : Type -/
+def sail_ignore_write_to (reg : (RegisterRef RegisterType k_a)) : Unit :=
+  (sail_mark_register reg "ignore_write")
+
+/-- Type quantifiers: k_a : Type -/
+def sail_pick_dependency (reg : (RegisterRef RegisterType k_a)) : Unit :=
+  (sail_mark_register reg "pick")
+
+/-- Type quantifiers: k_n : Nat, k_n ≥ 0 -/
+def __monomorphize (bv : (BitVec k_n)) : (BitVec k_n) :=
+  bv
+
+def undefined_Access_variety (_ : Unit) : SailM Access_variety := do
+  (internal_pick [AV_plain, AV_exclusive, AV_atomic_rmw])
+
+/-- Type quantifiers: arg_ : Nat, 0 ≤ arg_ ∧ arg_ ≤ 2 -/
+def Access_variety_of_num (arg_ : Nat) : Access_variety :=
+  match arg_ with
+  | 0 => AV_plain
+  | 1 => AV_exclusive
+  | _ => AV_atomic_rmw
+
+def num_of_Access_variety (arg_ : Access_variety) : Int :=
+  match arg_ with
+  | AV_plain => 0
+  | AV_exclusive => 1
+  | AV_atomic_rmw => 2
+
+def undefined_Access_strength (_ : Unit) : SailM Access_strength := do
+  (internal_pick [AS_normal, AS_rel_or_acq, AS_acq_rcpc])
+
+/-- Type quantifiers: arg_ : Nat, 0 ≤ arg_ ∧ arg_ ≤ 2 -/
+def Access_strength_of_num (arg_ : Nat) : Access_strength :=
+  match arg_ with
+  | 0 => AS_normal
+  | 1 => AS_rel_or_acq
+  | _ => AS_acq_rcpc
+
+def num_of_Access_strength (arg_ : Access_strength) : Int :=
+  match arg_ with
+  | AS_normal => 0
+  | AS_rel_or_acq => 1
+  | AS_acq_rcpc => 2
+
+def undefined_Explicit_access_kind (_ : Unit) : SailM Explicit_access_kind := do
+  (pure { variety := (← (undefined_Access_variety ()))
+          strength := (← (undefined_Access_strength ())) })
+
+/-- Type quantifiers: k_n : Nat, k_vasize : Nat, k_pa : Type, k_translation_summary : Type, k_arch_ak
+  : Type, k_n > 0 ∧ k_vasize > 0 -/
+def mem_read_request_is_exclusive (request : Mem_read_request k_n k_vasize k_pa k_translation_summary k_arch_ak) : Bool :=
+  match request.access_kind with
+  | AK_explicit eak =>
+    match eak.variety with
+    | AV_exclusive => true
+    | _ => false
+  | _ => false
+
+/-- Type quantifiers: k_n : Nat, k_vasize : Nat, k_pa : Type, k_translation_summary : Type, k_arch_ak
+  : Type, k_n > 0 ∧ k_vasize > 0 -/
+def mem_read_request_is_ifetch (request : Mem_read_request k_n k_vasize k_pa k_translation_summary k_arch_ak) : Bool :=
+  match request.access_kind with
+  | AK_ifetch () => true
+  | _ => false
+
+def __monomorphize_reads : Bool := false
+
+def __monomorphize_writes : Bool := false
+
+/-- Type quantifiers: k_n : Nat, k_vasize : Nat, k_pa : Type, k_translation_summary : Type, k_arch_ak
+  : Type, k_n > 0 ∧ k_vasize > 0 -/
+def mem_write_request_is_exclusive (request : Mem_write_request k_n k_vasize k_pa k_translation_summary k_arch_ak) : Bool :=
+  match request.access_kind with
+  | AK_explicit eak =>
+    match eak.variety with
+    | AV_exclusive => true
+    | _ => false
+  | _ => false
 
 def pa_bits (bv : (BitVec 56)) : (BitVec 64) :=
   (Sail.BitVec.zeroExtend bv 64)
