@@ -162,7 +162,7 @@ val bitvector_concat = pure {
   interpreter: "append",
   lem: "concat_vec",
   coq: "concat_vec",
-  lean: "BitVec.append",
+  lean: "Sail.BitVec.append'",
    _: "append"
 } : forall 'n 'm.
   (bits('n), bits('m)) -> bits('n + 'm)

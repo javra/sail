@@ -1841,7 +1841,8 @@ def decodeDataMemoryBarrier (CRm : (BitVec 4)) : (Option ast) :=
 
 def decodeCompareAndBranch (imm19 : (BitVec 19)) (Rt : (BitVec 5)) : (Option ast) :=
   let t : reg_index := (BitVec.toNat Rt)
-  let offset : (BitVec 64) := (Sail.BitVec.signExtend (BitVec.append imm19 (0b00 : (BitVec 2))) 64)
+  let offset : (BitVec 64) :=
+    (Sail.BitVec.signExtend (Sail.BitVec.append' imm19 (0b00 : (BitVec 2))) 64)
   (some (CompareAndBranch (t, offset)))
 
 def wMem (addr : (BitVec 64)) (value : (BitVec 64)) : SailM Unit := do

@@ -332,6 +332,16 @@ def access {w : Nat} (x : BitVec w) (i : Nat) : BitVec 1 :=
 def addInt {w : Nat} (x : BitVec w) (i : Int) : BitVec w :=
   x + BitVec.ofInt w i
 
+def subInt (x : BitVec w) (i : Int) : BitVec w :=
+  x - BitVec.ofInt w i
+
+def append' (x : BitVec n) (y : BitVec m) {mn}
+    (hmn : mn = n + m := by (conv => rhs; dsimp); try rfl) : BitVec mn :=
+  hmn ▸ x.append y
+
+instance : Coe (BitVec (1 * n)) (BitVec n) where
+  coe x := x.cast (by simp)
+
 end BitVec
 
 namespace Nat
