@@ -1814,7 +1814,7 @@ def decodeLoadStoreRegister (opc : (BitVec 2)) (Rm : (BitVec 5)) (option_v : (Bi
   let t : reg_index := (BitVec.toNat Rt)
   let n : reg_index := (BitVec.toNat Rn)
   let m : reg_index := (BitVec.toNat Rm)
-  if (Bool.or (bne option_v (0b011 : (BitVec 3))) (Eq S 1#1))
+  if (Bool.or (bne option_v (0b011 : (BitVec 3))) (BEq.beq S 1#1))
   then none
   else if (BEq.beq opc (0b00 : (BitVec 2)))
        then (some (LoadRegister (t, n, m)))
@@ -1826,7 +1826,7 @@ def decodeExclusiveOr (sf : (BitVec 1)) (shift : (BitVec 2)) (N : (BitVec 1)) (R
   let d : reg_index := (BitVec.toNat Rd)
   let n : reg_index := (BitVec.toNat Rn)
   let m : reg_index := (BitVec.toNat Rm)
-  if (Bool.and (Eq sf 0#1) (Eq (BitVec.access imm6 5) 1#1))
+  if (Bool.and (BEq.beq sf 0#1) (BEq.beq (BitVec.access imm6 5) 1#1))
   then none
   else if (bne imm6 (0b000000 : (BitVec 6)))
        then none

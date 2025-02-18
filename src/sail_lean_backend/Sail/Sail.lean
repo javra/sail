@@ -48,6 +48,8 @@ def extractLsbUnif {w : Nat} (x : BitVec w) (hi lo : Nat) {w}
     (hw : w = hi - lo + 1 := by (conv => rhs; simp [Nat.add_sub_cancel_left]); try rfl) : BitVec w :=
   (extractLsb x hi lo).cast hw.symm
 
+def update (x : BitVec m) (n : Nat) (b : BitVec 1) := updateSubrange' x n _ b
+
 def toBin {w : Nat} (x : BitVec w) : String :=
   List.asString (List.map (fun c => if c then '1' else '0') (List.ofFn (BitVec.getMsb' x)))
 
@@ -206,9 +208,6 @@ def reg_deref (reg_ref : @RegisterRef Register RegisterType α) : PreSailM Regis
 
 def vectorAccess [Inhabited α] (v : Vector α m) (n : Nat) : α := v[n]!
 
-def bitvectorUpdate (v : BitVec m) (n : Nat) (b : BitVec 1) : BitVec m :=
-  BitVec.updateSubrange v n n (b.cast (by simp))
-
 def vectorInit {n : Nat} (a : α) : Vector α n := Vector.mkVector n a
 
 def vectorUpdate (v : Vector α m) (n : Nat) (a : α) := v.set! n a
@@ -334,7 +333,6 @@ def main_of_sail_main (initialState : SequentialState RegisterType c) (main : Un
       IO.print m
   | .error e _ => do
     IO.println s!"Error while running the sail program!: {e.print}"
-
 
 section Loops
 
