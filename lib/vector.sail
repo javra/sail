@@ -162,7 +162,7 @@ val bitvector_concat = pure {
   interpreter: "append",
   lem: "concat_vec",
   coq: "concat_vec",
-  lean: "Sail.BitVec.append'",
+  lean: "BitVec.append'",
    _: "append"
 } : forall 'n 'm.
   (bits('n), bits('m)) -> bits('n + 'm)
@@ -307,7 +307,7 @@ val subrange_bits = pure {
   interpreter: "subrange",
   lem: "subrange_vec_dec",
   coq: "subrange_vec_dec",
-  lean: "Sail.BitVec.extractLsbUnif",
+  lean: "Sail.BitVec.extractLsb",
   _: "vector_subrange"
 } : forall ('n : Int) ('m : Int) ('o : Int), 0 <= 'o <= 'm < 'n.
   (bits('n), int('m), int('o)) -> bits('m - 'o + 1)

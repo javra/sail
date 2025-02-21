@@ -495,6 +495,16 @@ let get_fn_implicits (Typ_aux (t, _)) : bool list =
   in
   match t with Typ_fn (args, cod) -> List.map arg_implicit args | _ -> []
 
+let get_fn_arg_widths (Typ_aux (t, _)) : nexp option list =
+  let get_nexp arg =
+    match arg with
+    | Typ_aux (Typ_app (Id_aux (Id "bitvector", _), [A_aux (A_nexp m, _)]), _)
+    | Typ_aux (Typ_app (Id_aux (Id "bits", _), [A_aux (A_nexp m, _)]), _) ->
+        Some m
+    | _ -> None
+  in
+  match t with Typ_fn (args, cod) -> List.map get_nexp args | _ -> []
+
 let rec is_bitvector_pattern (P_aux (pat, _)) =
   match pat with P_vector _ | P_vector_concat _ -> true | P_as (pat, _) -> is_bitvector_pattern pat | _ -> false
 
@@ -506,11 +516,34 @@ let remove_er ctx = { ctx with early_ret = false }
 
 let rec list_any (l : 'a list) (f : 'a -> bool) = match l with t :: q -> f t || list_any q f | _ -> false
 
+let is_non_atomic_bitvec exp =
+  let typ = typ_of exp in
+  match typ with
+  | Typ_aux (Typ_app (Id_aux (Id "bitvector", _), [A_aux (A_nexp m, _)]), _)
+  | Typ_aux (Typ_app (Id_aux (Id "bits", _), [A_aux (A_nexp m, _)]), _) -> (
+      match m with
+      | Nexp_aux (Nexp_constant _, _) | Nexp_aux (Nexp_var _, _) | Nexp_aux (Nexp_id _, _) -> false
+      | _ -> true
+    )
+  | _ -> false
+
 let rec doc_match_clause (as_monadic : bool) ctx (Pat_aux (cl, l)) =
   match cl with
   | Pat_exp (pat, branch) ->
       group (nest 2 (string "| " ^^ doc_pat pat ^^ string " =>" ^^ break 1 ^^ doc_exp as_monadic ctx branch))
   | Pat_when (pat, when_, branch) -> failwith "The Lean backend does not support 'when' clauses in patterns"
+
+and d_of_arg ctx (expected_typ : nexp option) arg =
+  let wrap, arg_monadic =
+    match arg with
+    | E_aux (E_let _, _) | E_aux (E_internal_plet _, _) | E_aux (E_if _, _) | E_aux (E_match _, _) ->
+        if effectful (effect_of arg) then ((fun x -> wrap_with_do true x), true) else (parens, false)
+    | _ -> ((fun x -> x), false)
+  in
+  let pp_exp = doc_exp arg_monadic ctx arg in
+  let pp_expected = match expected_typ with None -> underscore | Some n -> doc_nexp ctx n in
+  if is_non_atomic_bitvec arg then wrap (nest 2 (parens (flow space [string "BitVec.blindCast"; pp_exp; pp_expected])))
+  else wrap pp_exp
 
 and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
   if ctx.early_ret && not (has_early_return full_exp) then (
@@ -519,15 +552,6 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
   )
   else (
     let env = env_of_tannot annot in
-    let d_of_arg ctx arg =
-      let wrap, arg_monadic =
-        match arg with
-        | E_aux (E_let _, _) | E_aux (E_internal_plet _, _) | E_aux (E_if _, _) | E_aux (E_match _, _) ->
-            if effectful (effect_of arg) then ((fun x -> wrap_with_do true x), true) else (parens, false)
-        | _ -> ((fun x -> x), false)
-      in
-      wrap (doc_exp arg_monadic ctx arg)
-    in
     let d_of_field (FE_aux (FE_fexp (field, e), _) as fexp) =
       let field_monadic = effectful (effect_of e) in
       doc_fexp field_monadic ctx fexp
@@ -542,7 +566,7 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
     | E_app (Id_aux (Id "Some", _), args) ->
         wrap_with_pure as_monadic
           (let d_id = string "some" in
-           let d_args = List.map (d_of_arg ctx) args in
+           let d_args = List.map (d_of_arg ctx None) args in
            nest 2 (parens (flow (break 1) (d_id :: d_args)))
           )
     | E_app (Id_aux (Id "foreach#", _), args) -> begin
@@ -629,11 +653,12 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
         let ctx = match f with Id_aux (Id "early_return", _) -> remove_er ctx | _ -> ctx in
         let _, f_typ = Env.get_val_spec f env in
         let implicits = get_fn_implicits f_typ in
+        let widths = get_fn_arg_widths f_typ in
         let d_id =
           if Env.is_extern f env "lean" then string (Env.get_extern f env "lean")
           else doc_exp false ctx (E_aux (E_id f, (l, annot)))
         in
-        let d_args = List.map (d_of_arg ctx) args in
+        let d_args = List.map (fun (arg, width) -> d_of_arg ctx width arg) (List.combine args widths) in
         let d_args = List.map snd (List.filter (fun x -> not (fst x)) (List.combine implicits d_args)) in
         let fn_monadic = not (Effects.function_is_pure f ctx.global.effect_info) in
         nest 2
@@ -645,14 +670,17 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
           match typ_of full_exp with
           | Typ_aux (Typ_app (Id_aux (Id "bitvector", _), [A_aux (A_nexp m, _)]), _)
           | Typ_aux (Typ_app (Id_aux (Id "bits", _), [A_aux (A_nexp m, _)]), _) ->
-              nest 2 (parens (flow space [string "BitVec.join1"; brackets (separate_map comma_sp (d_of_arg ctx) vals)]))
-          | _ -> string "#v" ^^ wrap_with_pure as_monadic (brackets (nest 2 (separate_map comma_sp (d_of_arg ctx) vals)))
+              nest 2
+                (parens (flow space [string "BitVec.join1"; brackets (separate_map comma_sp (d_of_arg ctx None) vals)]))
+          | _ ->
+              string "#v"
+              ^^ wrap_with_pure as_monadic (brackets (nest 2 (separate_map comma_sp (d_of_arg ctx None) vals)))
         in
         pp
     | E_typ (typ, e) ->
         if effectful (effect_of e) then doc_exp as_monadic ctx e
         else wrap_with_pure as_monadic (parens (separate space [doc_exp false ctx e; colon; doc_typ ctx typ]))
-    | E_tuple es -> wrap_with_pure as_monadic (parens (separate_map (comma ^^ space) (d_of_arg ctx) es))
+    | E_tuple es -> wrap_with_pure as_monadic (parens (separate_map (comma ^^ space) (d_of_arg ctx None) es))
     | E_let (LB_aux (LB_val (lpat, lexp), _), e') | E_internal_plet (lpat, lexp, e') ->
         let arrow = match e with E_let _ -> string "←" | _ -> string "← do" in
         let id_typ =
@@ -686,17 +714,17 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
           || as_monadic
         in
         let cases = separate_map hardline (doc_match_clause as_monadic' ctx) brs in
-        string (match_or_match_bv brs) ^^ d_of_arg (remove_er ctx) discr ^^ string " with" ^^ hardline ^^ cases
+        string (match_or_match_bv brs) ^^ d_of_arg (remove_er ctx) None discr ^^ string " with" ^^ hardline ^^ cases
     | E_assign ((LE_aux (le_act, tannot) as le), e) ->
         wrap_with_left_arrow (not as_monadic)
           ( match le_act with
-          | LE_id id | LE_typ (_, id) -> string "writeReg " ^^ doc_id_ctor id ^^ space ^^ d_of_arg ctx e
-          | LE_deref e' -> string "writeRegRef " ^^ d_of_arg ctx e' ^^ space ^^ d_of_arg ctx e
+          | LE_id id | LE_typ (_, id) -> string "writeReg " ^^ doc_id_ctor id ^^ space ^^ d_of_arg ctx None e
+          | LE_deref e' -> string "writeRegRef " ^^ d_of_arg ctx None e' ^^ space ^^ d_of_arg ctx None e
           | _ -> failwith ("assign " ^ string_of_lexp le ^ "not implemented yet")
           )
     | E_if (i, t, e) ->
         let statements_monadic = as_monadic || effectful (effect_of t) || effectful (effect_of e) in
-        nest 2 (string "if" ^^ space ^^ nest 1 (d_of_arg (remove_er ctx) i))
+        nest 2 (string "if" ^^ space ^^ nest 1 (d_of_arg (remove_er ctx) None i))
         ^^ hardline
         ^^ nest 2 (string "then" ^^ space ^^ nest 3 (doc_exp statements_monadic ctx t))
         ^^ hardline
@@ -711,7 +739,7 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
         ^^ parens (doc_exp false ctx e)
         ^^ space
         ^^ parens (string "fun the_exception => " ^^ hardline ^^ cases)
-    | E_assert (e1, e2) -> string "assert " ^^ d_of_arg ctx e1 ^^ space ^^ d_of_arg ctx e2
+    | E_assert (e1, e2) -> string "assert " ^^ d_of_arg ctx None e1 ^^ space ^^ d_of_arg ctx None e2
     | E_list es -> brackets (separate_map comma_sp (doc_exp as_monadic ctx) es)
     | E_cons (hd_e, tl_e) -> parens (separate space [doc_exp false ctx hd_e; string "::"; doc_exp false ctx tl_e])
     | _ ->
